@@ -3,7 +3,7 @@ import csv
 import json
 import uuid
 from datetime import timedelta, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 # --- THIRD-PARTY IMPORTS ---
 from django.conf import settings
@@ -37,7 +37,7 @@ from rest_framework import viewsets, permissions, filters
 from core.cache_utils import clear_dashboard_cache
 from . import importers as inventory_importers
 from .exports import (
-    generate_sow_history_export, generate_expense_report, generate_customer_list_export,
+    generate_expense_report, generate_customer_list_export,
     generate_customer_statement, generate_supplier_deliveries_export
 )
 from .forms import (
@@ -48,26 +48,19 @@ from .forms import (
     TransactionFilterForm, TransactionReportForm
 )
 from .models import (
-    Category, Customer, CustomerPayment, Expense, ExpenseCategory, HydraulicSow,
+    Category, Customer, CustomerPayment, Expense, ExpenseCategory,
     POSSale, PriceOverrideLog, CancellationReason, Product, PurchaseOrder, PurchaseOrderItem,
-    StockTransaction, Supplier
+    StockTransaction, Supplier, HeldSale, CashDrawerSession
 )
 from .serializers import (
     ProductSerializer, ProductInventorySerializer, CategorySerializer, CustomerSerializer, CustomerPaymentSerializer,
-    HydraulicSowSerializer, POSSaleSerializer, ExpenseSerializer, ExpenseCategorySerializer
+    POSSaleSerializer, ExpenseSerializer, ExpenseCategorySerializer
 )
 from .utils import render_to_pdf
-from .utils_service import get_service_product
 
 
 
-from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.db import transaction
-from django.db.models import Sum, Q
-from .models import POSSale, Product, StockTransaction, Category
-from decimal import Decimal
+from django.db.models import Sum
 
 # --- MISC ---
 
@@ -101,10 +94,6 @@ def refund_search(request):
     items = []
     # Fetch sold items and calculate remaining returnable quantity
     for item in sale.items.filter(transaction_type='OUT', transaction_reason='SALE'):
-        # Skip Hydraulic Service jobs
-        if "Hydraulic Service" in item.product.name or item.product.sku == "SVC-HYD-001":
-            continue
-            
         returned = sale.items.filter(
             product=item.product, 
             transaction_type='IN', 
@@ -141,11 +130,6 @@ def refund_process(request):
             messages.error(request, "This receipt has already been refunded.")
             return redirect('inventory:refund_portal')
         
-        # Check if the receipt belongs to a Hydraulic SOW job
-        if sale.notes and "Hydraulic Job" in sale.notes:
-            messages.error(request, "Refunds for Hydraulic Service Jobs are not permitted.")
-            return redirect('inventory:refund_portal')
-        
         refund_count = 0
         for key, qty in request.POST.items():
             if key.startswith('qty_') and int(qty) > 0:
@@ -177,493 +161,6 @@ def refund_process(request):
         
         return redirect('inventory:refund_portal')
     return redirect('inventory:refund_portal')
-
-@login_required
-@permission_required('inventory.add_hydraulicsow', raise_exception=True)
-def hydraulic_sow_create(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    next_url = request.GET.get('next')
-
-    if request.method == 'POST':
-        cost_input = request.POST.get('cost')
-        cost_decimal = Decimal('0.00')
-        if cost_input:
-            try:
-                cost_decimal = Decimal(str(cost_input))
-            except (ValueError, TypeError, InvalidOperation):
-                pass
-
-        charge_account = request.POST.get('charge_account')
-        mark_paid = request.POST.get('mark_paid')
-
-        # --- VALIDATION: Required Fields ---
-        hose_type = request.POST.get('hose_type', '').strip()
-        diameter = request.POST.get('diameter', '').strip()
-        length = request.POST.get('length', '').strip()
-        fitting_a = request.POST.get('fitting_a', '').strip()
-        fitting_b = request.POST.get('fitting_b', '').strip()
-
-        if not all([hose_type, diameter, length, fitting_a, fitting_b]):
-            messages.error(request, "Please fill in all required fields: Hose Type, Diameter, Length, and Fittings.")
-            sow_data = HydraulicSow(
-                customer=customer, hose_type=hose_type,
-                diameter=diameter, length=request.POST.get('length') or None,
-                pressure=request.POST.get('pressure') or None, application=request.POST.get('application', ''),
-                fitting_a=fitting_a, fitting_b=fitting_b,
-                orientation=request.POST.get('orientation') or None, protection=request.POST.get('protection', ''),
-                cost=cost_decimal if cost_decimal > 0 else None, notes=request.POST.get('notes', '')
-            )
-            return render(request, 'inventory/hydraulic_sow_form.html', {
-                'customer': customer, 'sow': sow_data, 'page_title': 'Create Hydraulic SOW', 
-                'is_charged': False, 'next_url': next_url, 'is_charge_checked': charge_account, 'is_paid_checked': mark_paid})
-
-        # --- VALIDATION for named customers ---
-        if customer.name != "Walk-in Customer":
-            has_cost = cost_decimal > 0
-            has_payment_method = charge_account or mark_paid
-            error_message = None
-
-            if not has_cost:
-                error_message = "A service cost is required for all customer jobs."
-            elif not has_payment_method:
-                error_message = "You must select a payment method (Charge to Account or Pay Cash)."
-
-            if error_message:
-                messages.error(request, error_message)
-                sow_data = HydraulicSow(
-                    customer=customer, hose_type=request.POST.get('hose_type', ''),
-                    diameter=request.POST.get('diameter', ''), length=request.POST.get('length') or None,
-                    pressure=request.POST.get('pressure') or None, application=request.POST.get('application', ''),
-                    fitting_a=request.POST.get('fitting_a', ''), fitting_b=request.POST.get('fitting_b', ''),
-                    orientation=request.POST.get('orientation') or None, protection=request.POST.get('protection', ''),
-                    cost=cost_decimal if cost_decimal > 0 else None, notes=request.POST.get('notes', '')
-                )
-                return render(request, 'inventory/hydraulic_sow_form.html', {
-                    'customer': customer, 
-                    'sow': sow_data, 
-                    'page_title': 'Create Hydraulic SOW', 
-                    'is_charged': False, 
-                    'next_url': next_url,
-                    'is_charge_checked': charge_account,
-                    'is_paid_checked': mark_paid})
-        
-        # --- VALIDATION for Walk-in Customers ---
-        elif customer.name == "Walk-in Customer" and cost_decimal <= 0:
-            messages.error(request, "A service cost is required for Walk-in Customers.")
-            sow_data = HydraulicSow(
-                customer=customer, hose_type=request.POST.get('hose_type', ''),
-                diameter=request.POST.get('diameter', ''), length=request.POST.get('length') or None,
-                pressure=request.POST.get('pressure') or None, application=request.POST.get('application', ''),
-                cost=None, notes=request.POST.get('notes', '')
-            )
-            return render(request, 'inventory/hydraulic_sow_form.html', {'customer': customer, 'sow': sow_data, 'page_title': 'Create Hydraulic SOW', 'is_charged': False, 'next_url': next_url})
-
-        with transaction.atomic():
-            sow = HydraulicSow.objects.create(
-                customer=customer,
-                created_by=request.user,
-                hose_type=request.POST.get('hose_type', ''),
-                diameter=request.POST.get('diameter', ''),
-                length=request.POST.get('length') or None,
-                pressure=request.POST.get('pressure') or None,
-                application=request.POST.get('application', ''),
-                fitting_a=request.POST.get('fitting_a', ''),
-                fitting_b=request.POST.get('fitting_b', ''),
-                orientation=request.POST.get('orientation') or None,
-                protection=request.POST.get('protection', ''),
-                cost=cost_decimal if cost_decimal > 0 else None,
-                notes=request.POST.get('notes', '')
-            )
-
-            if cost_decimal > 0:
-                # For Walk-in Customers, always generate a receipt (Cash default) if there is a cost.
-                # For named customers, only generate if charged (Credit) or marked paid (Cash).
-                if charge_account or mark_paid or customer.name == "Walk-in Customer":
-                    payment_method = 'CREDIT' if charge_account else 'CASH'
-                    amount_paid = 0 if charge_account else cost_decimal
-
-                    receipt_id = sow.sow_id
-                    sale_record = POSSale.objects.create(
-                        receipt_id=receipt_id,
-                        customer=customer,
-                        cashier=request.user,
-                        payment_method=payment_method,
-                        total_amount=cost_decimal,
-                        amount_paid=amount_paid,
-                        change_given=0,
-                        status='COMPLETED',
-                        notes=f"Hydraulic Job {sow.sow_id}: {sow.hose_type} ({sow.application})"
-                    )
-
-                    # LOG INDIVIDUAL ITEM IN TRANSACTION LOG
-                    service_product = get_service_product()
-                    StockTransaction.objects.create(
-                        product=service_product,
-                        pos_sale=sale_record,
-                        transaction_type='OUT',
-                        transaction_reason=StockTransaction.TransactionReason.SALE,
-                        quantity=1,
-                        selling_price=cost_decimal,
-                        user=request.user,
-                        notes=f"Hydraulic Service: {sow.hose_type} | {sow.diameter}\" | {sow.application}"
-                    )
-
-                    messages.success(request, f"Hydraulic SOW saved. Receipt and transaction log generated.")
-                    return redirect('inventory:pos_receipt_detail', receipt_id=receipt_id)
-
-        messages.success(request, f"Hydraulic Scope of Work saved for {customer.name}")
-            
-        if next_url:
-            return redirect(next_url)
-            
-        return redirect('inventory:customer_detail', pk=pk)
-
-    return render(request, 'inventory/hydraulic_sow_form.html', {
-        'customer': customer,
-        'page_title': 'Create Hydraulic SOW',
-        'is_charged': False,
-        'next_url': next_url,
-    })
-
-@login_required
-@permission_required('inventory.change_hydraulicsow', raise_exception=True)
-def hydraulic_sow_update(request, pk, sow_pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    sow = get_object_or_404(HydraulicSow, pk=sow_pk, customer=customer)
-    
-    # Ensure SOW ID exists (for legacy records)
-    if not sow.sow_id:
-        sow.save()
-
-    if request.method == 'POST':
-        cost_input = request.POST.get('cost')
-        cost_decimal = Decimal('0.00')
-        if cost_input:
-            try:
-                cost_decimal = Decimal(str(cost_input))
-            except (ValueError, TypeError, InvalidOperation):
-                pass
-
-        charge_to_account = request.POST.get('charge_account')
-        mark_paid = request.POST.get('mark_paid')
-        ledger_entry = POSSale.objects.filter(receipt_id=sow.sow_id).first()
-        if not ledger_entry:
-            ledger_entry = POSSale.objects.filter(receipt_id=f"SOW-{sow.id}").first()
-
-        # --- VALIDATION: Required Fields ---
-        hose_type = request.POST.get('hose_type', '').strip()
-        diameter = request.POST.get('diameter', '').strip()
-        length = request.POST.get('length', '').strip()
-        fitting_a = request.POST.get('fitting_a', '').strip()
-        fitting_b = request.POST.get('fitting_b', '').strip()
-
-        if not all([hose_type, diameter, length, fitting_a, fitting_b]):
-            messages.error(request, "Please fill in all required fields: Hose Type, Diameter, Length, and Fittings.")
-            sow.hose_type = hose_type
-            sow.diameter = diameter
-            sow.fitting_a = fitting_a
-            sow.fitting_b = fitting_b
-            sow.length = request.POST.get('length') or None
-            sow.pressure = request.POST.get('pressure') or None
-            sow.application = request.POST.get('application', '')
-            sow.orientation = request.POST.get('orientation') or None
-            sow.protection = request.POST.get('protection', '')
-            sow.notes = request.POST.get('notes', '')
-            sow.cost = cost_decimal if cost_decimal > 0 else None
-            return render(request, 'inventory/hydraulic_sow_form.html', {'customer': customer, 'sow': sow, 'page_title': f'Edit Hydraulic SOW {sow.sow_id or sow.id}', 'is_charged': ledger_entry is not None, 'is_charge_checked': charge_to_account, 'is_paid_checked': mark_paid})
-
-        # --- VALIDATION for named customers on un-charged SOWs ---
-        if not ledger_entry and customer.name != "Walk-in Customer":
-            has_cost = cost_decimal > 0
-            has_payment_method = charge_to_account or mark_paid
-            error_message = None
-
-            if not has_cost:
-                error_message = "A service cost is required to create a new charge for this job."
-            elif not has_payment_method:
-                error_message = "You must select a payment method (Charge or Pay Cash) to create a new charge."
-            
-            if error_message:
-                messages.error(request, error_message)
-                sow.hose_type = request.POST.get('hose_type', ''); sow.diameter = request.POST.get('diameter', '')
-                sow.length = request.POST.get('length') or None; sow.pressure = request.POST.get('pressure') or None
-                sow.application = request.POST.get('application', ''); sow.fitting_a = request.POST.get('fitting_a', '')
-                sow.fitting_b = request.POST.get('fitting_b', ''); sow.orientation = request.POST.get('orientation') or None
-                sow.protection = request.POST.get('protection', ''); sow.notes = request.POST.get('notes', '')
-                sow.cost = cost_decimal if cost_decimal > 0 else None
-                return render(request, 'inventory/hydraulic_sow_form.html', {
-                    'customer': customer, 'sow': sow, 
-                    'page_title': f'Edit Hydraulic SOW {sow.sow_id or sow.id}', 
-                    'is_charged': False,
-                    'is_charge_checked': charge_to_account,
-                    'is_paid_checked': mark_paid
-                })
-        
-        # --- VALIDATION for Walk-in Customers ---
-        elif not ledger_entry and customer.name == "Walk-in Customer" and cost_decimal <= 0:
-            messages.error(request, "A service cost is required for Walk-in Customers.")
-            sow.hose_type = request.POST.get('hose_type', ''); sow.diameter = request.POST.get('diameter', '')
-            sow.cost = None
-            return render(request, 'inventory/hydraulic_sow_form.html', {
-                'customer': customer, 'sow': sow, 
-                'page_title': f'Edit Hydraulic SOW {sow.sow_id or sow.id}', 'is_charged': False
-            })
-
-        # Update SOW fields
-        sow.hose_type = request.POST.get('hose_type', '')
-        sow.diameter = request.POST.get('diameter', '')
-        sow.length = request.POST.get('length') or None
-        sow.pressure = request.POST.get('pressure') or None
-        sow.application = request.POST.get('application', '')
-        sow.fitting_a = request.POST.get('fitting_a', '')
-        sow.fitting_b = request.POST.get('fitting_b', '')
-        sow.orientation = request.POST.get('orientation') or None
-        sow.protection = request.POST.get('protection', '')
-        sow.notes = request.POST.get('notes', '')
-
-        sow.cost = cost_decimal if cost_decimal > 0 else None
-        sow.save()
-
-        # Handle charging logic
-        if ledger_entry:
-            if ledger_entry.total_amount != cost_decimal:
-                ledger_entry.total_amount = cost_decimal
-                ledger_entry.save()
-
-                # Update existing transaction if it exists
-                st = StockTransaction.objects.filter(pos_sale=ledger_entry).first()
-                if st:
-                    st.selling_price = cost_decimal
-                    st.notes = f"Hydraulic Service: {sow.hose_type} | {sow.diameter}\" | {sow.application} (Updated)"
-                    st.save()
-
-                messages.success(request, f"SOW updated. Associated charge was adjusted to ₱{cost_decimal:,.2f}.")
-            else:
-                messages.success(request, "SOW updated. No changes to the associated charge.")
-        elif (charge_to_account or mark_paid or customer.name == "Walk-in Customer") and cost_decimal > 0:
-            payment_method = 'CREDIT' if charge_to_account else 'CASH'
-            amount_paid = 0 if charge_to_account else cost_decimal
-            
-            with transaction.atomic():
-                sale_record = POSSale.objects.create(
-                    receipt_id=sow.sow_id, 
-                    customer=customer, 
-                    cashier=request.user, 
-                    payment_method=payment_method, 
-                    total_amount=cost_decimal, 
-                    amount_paid=amount_paid,
-                    status='COMPLETED',
-                    notes=f"Hydraulic Job #{sow.id}: {sow.hose_type} ({sow.application})"
-                )
-
-                # LOG INDIVIDUAL ITEM IN TRANSACTION LOG
-                service_product = get_service_product()
-                StockTransaction.objects.create(
-                    product=service_product,
-                    pos_sale=sale_record,
-                    transaction_type='OUT',
-                    transaction_reason=StockTransaction.TransactionReason.SALE,
-                    quantity=1,
-                    selling_price=cost_decimal,
-                    user=request.user,
-                    notes=f"Hydraulic Service: {sow.hose_type} | {sow.diameter}\" | {sow.application}"
-                )
-
-            messages.success(request, f"SOW updated and a new charge of ₱{cost_decimal:,.2f} was added to the account.")
-        else:
-            messages.success(request, "Hydraulic SOW updated successfully.")
-        return redirect('inventory:customer_detail', pk=pk)
-
-    ledger_entry = POSSale.objects.filter(receipt_id=sow.sow_id).first()
-    if not ledger_entry:
-        ledger_entry = POSSale.objects.filter(receipt_id=f"SOW-{sow.id}").first()
-    
-    # Attach ledger to sow object temporarily for template logic
-    sow.pos_sale = ledger_entry
-    
-    return render(request, 'inventory/hydraulic_sow_form.html', {'customer': customer, 'sow': sow, 'page_title': f'Edit Hydraulic SOW {sow.sow_id or sow.id}', 'is_charged': ledger_entry is not None})
-
-@login_required
-@permission_required('inventory.add_hydraulicsow', raise_exception=True)
-def hydraulic_sow_import(request):
-    if request.method == 'POST':
-        # Handle file upload and parsing logic here
-        messages.info(request, "Import functionality is under construction.")
-        return redirect('inventory:customer_list')
-        
-    # You will need a simple template for this, or reuse a generic import template
-    return render(request, 'inventory/form_import.html', {
-        'title': 'Import Hydraulic SOW'
-    })
-
-@login_required
-@permission_required('inventory.view_hydraulicsow', raise_exception=True)
-def export_sow_history(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    format_type = request.GET.get('format', 'pdf')
-    sow_q = request.GET.get('sow_q', '')
-
-    sows = customer.sows.select_related('created_by').all()
-    
-    if sow_q:
-        q_sow = Q(sow_id__icontains=sow_q) | \
-                Q(hose_type__icontains=sow_q) | \
-                Q(application__icontains=sow_q) | \
-                Q(notes__icontains=sow_q) | \
-                Q(fitting_a__icontains=sow_q) | \
-                Q(fitting_b__icontains=sow_q)
-        if sow_q.isdigit():
-            q_sow |= Q(id=sow_q)
-        sows = sows.filter(q_sow)
-
-    response = generate_sow_history_export(customer, sows, format_type, request)
-    if response:
-        return response
-    return HttpResponse("Error Generating Export", status=500)
-
-@login_required
-@permission_required('inventory.add_hydraulicsow', raise_exception=True)
-def import_sow_history(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
-    
-    if request.method == "POST" and request.FILES.get('csv_file'):
-        file_obj = request.FILES['csv_file']
-        if not (file_obj.name.lower().endswith('.csv') or file_obj.name.lower().endswith('.xlsx')):
-            messages.error(request, "Please upload a CSV or Excel file.")
-            return redirect('inventory:customer_detail', pk=pk)
-
-        try:
-            count, errors = inventory_importers.import_sow_from_file(file_obj, customer, request.user)
-            
-            if errors:
-                for error in errors[:5]:
-                    messages.error(request, error)
-                if len(errors) > 5:
-                    messages.warning(request, f"And {len(errors) - 5} more errors...")
-            else:
-                if count > 0:
-                    messages.success(request, f"Successfully imported {count} SOW records.")
-                else:
-                    messages.info(request, "Import complete. No new SOW records were added.")
-
-        except Exception as e:
-            messages.error(request, f"An unexpected error occurred while processing the file: {e}")
-            
-        return redirect('inventory:customer_detail', pk=pk)
-
-    instructions = {
-        "title": "How to Format Your SOW Data",
-        "general":[
-            "Fill in your SOW (Scope of Work) data in the downloaded Excel template.",
-            "Do NOT change the column headers in the 'Data' sheet.",
-            "Fields marked with an asterisk (*) are REQUIRED.",
-            "Delete the sample row in the 'Data' sheet before uploading."
-        ],
-        "columns":[
-            {"name": "Hose Type (*)", "desc": "The type of hose.", "example": "'2 Wire'"},
-            {"name": "Diameter (*)", "desc": "The hose diameter.", "example": "'1/2'"},
-            {"name": "Length (*)", "desc": "The length of the hose (as a number).", "example": "1000"},
-            {"name": "Pressure", "desc": "The pressure rating (as a number).", "example": "3000"},
-            {"name": "Cost", "desc": "The cost of the service (as a number, no currency symbol).", "example": "1500.00"},
-            {"name": "Application", "desc": "Where the hose is used.", "example": "'Excavator Boom'"},
-            {"name": "Fitting A (*)", "desc": "The type of the first fitting.", "example": "'JIC F'"},
-            {"name": "Fitting B (*)", "desc": "The type of the second fitting.", "example": "'BSP M'"},
-            {"name": "Notes", "desc": "Any additional notes or comments.", "example": "'Urgent repair'"},
-        ]
-    }
-    return render(request, 'inventory/sow_import.html', {'customer': customer, 'instructions': instructions})
-
-@login_required
-def download_sow_template(request):
-    """Downloads an Excel template for SOW imports with instructions."""
-    wb = Workbook()
-    
-    # --- Create Instructions Sheet ---
-    ws_instructions = wb.active
-    ws_instructions.title = "Instructions"
-
-    # Styles
-    title_font = Font(name='Calibri', bold=True, size=16, color="1F4E78")
-    header_font = Font(name='Calibri', bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    instruction_header_font = Font(name='Calibri', bold=True, size=12)
-    thin_border = Border(left=Side(style='thin'), 
-                         right=Side(style='thin'), 
-                         top=Side(style='thin'), 
-                         bottom=Side(style='thin'))
-    
-    # Title
-    ws_instructions['A1'] = "How to Use This Import Template"
-    ws_instructions['A1'].font = title_font
-    ws_instructions.merge_cells('A1:D1')
-
-    # General Instructions
-    ws_instructions.append([]) # Spacer
-    ws_instructions['A3'] = "General Rules"
-    ws_instructions['A3'].font = header_font
-    ws_instructions.append(["1. Fill in your SOW (Scope of Work) data in the 'Data' sheet."])
-    ws_instructions.append(["2. Do NOT change the column headers in the 'Data' sheet."])
-    ws_instructions.append(["3. Fields marked with an asterisk (*) are REQUIRED."])
-    ws_instructions.append(["4. Delete the sample row in the 'Data' sheet before uploading."])
-    ws_instructions.append([]) # Spacer
-    
-    # Column Descriptions
-    ws_instructions['A9'] = "Column Guide"
-    ws_instructions['A9'].font = header_font
-    
-    headers =[
-        ("Column", "Description", "Example", "Required?"),
-        ("Hose Type", "The type of hose.", "'2 Wire'", "Yes (*)"),
-        ("Diameter", "The hose diameter.", "'1/2'", "Yes (*)"),
-        ("Length", "The length of the hose (as a number).", "1000", "Yes (*)"),
-        ("Pressure", "The pressure rating (as a number).", "3000", "No"),
-        ("Cost", "The cost of the service (as a number, no currency symbol).", "1500.00", "No"),
-        ("Application", "Where the hose is used.", "'Excavator Boom'", "No"),
-        ("Fitting A", "The type of the first fitting.", "'JIC F'", "Yes (*)"),
-        ("Fitting B", "The type of the second fitting.", "'BSP M'", "Yes (*)"),
-        ("Notes", "Any additional notes or comments.", "'Urgent repair'", "No"),
-    ]
-    
-    for row_data in headers:
-        ws_instructions.append(row_data)
-
-    # Styling for instructions table
-    for cell in ws_instructions['A10:D10'][0]:
-        cell.font = Font(name='Calibri', bold=True)
-        cell.fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
-        cell.alignment = Alignment(horizontal='center')
-    
-    for row in ws_instructions['A10:D19']:
-        for cell in row:
-            cell.border = thin_border
-            cell.alignment = Alignment(vertical='center')
-
-    for col_idx, width in enumerate([20, 50, 25, 15], 1):
-        ws_instructions.column_dimensions[get_column_letter(col_idx)].width = width
-    
-    # --- Create Data Sheet ---
-    ws_data = wb.create_sheet(title="Data")
-    data_headers =['Hose Type', 'Diameter', 'Length', 'Pressure', 'Cost', 'Application', 'Fitting A', 'Fitting B', 'Notes']
-    ws_data.append(data_headers)
-    ws_data.append(['2 Wire', '1/2', 1000, 3000, 1500.00, 'Excavator Boom', 'JIC F', 'BSP M', 'Urgent repair'])
-    
-    # Style header and set column widths
-    for i, cell in enumerate(ws_data['1:1'], 1):
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
-        ws_data.column_dimensions[get_column_letter(i)].width = 22
-
-    ws_data.freeze_panes = 'A2'
-    for row in ws_data['A1:I2']:
-        for cell in row:
-            cell.border = thin_border
-
-    # --- Prepare Response ---
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename="sow_import_template.xlsx"'
-    wb.save(response)
-    return response
 
 @login_required
 def download_expense_template(request):
@@ -807,7 +304,7 @@ class ExpenseListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 try:
                     d = datetime(int(context['current_year']), int(context['current_month']), 1)
                     context['period_name'] = d.strftime('%B %Y')
-                except:
+                except (ValueError, TypeError):
                     context['period_name'] = "Selected Period"
             else:
                 context['period_name'] = "All Time"
@@ -872,7 +369,7 @@ class ExpenseCreateView(LoginRequiredMixin, PermissionRequiredMixin, SuccessMess
                         initial['expense_date'] = today
                     else:
                         initial['expense_date'] = datetime(int(y), 1, 1).date()
-            except:
+            except (ValueError, TypeError):
                 pass
         return initial
 
@@ -1536,56 +1033,22 @@ class CustomerDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
         current_balance = self.object.get_balance()
         context['current_balance'] = current_balance
         
-        # SOW Filtering
-        sow_q = self.request.GET.get('sow_q', '')
-        sows_qs = self.object.sows.select_related('created_by').all()
-
-        if sow_q:
-            q_sow = Q(sow_id__icontains=sow_q) | \
-                    Q(hose_type__icontains=sow_q) | \
-                    Q(application__icontains=sow_q) | \
-                    Q(notes__icontains=sow_q) | \
-                    Q(fitting_a__icontains=sow_q) | \
-                    Q(fitting_b__icontains=sow_q)
-            if sow_q.isdigit():
-                q_sow |= Q(id=sow_q)
-            sows_qs = sows_qs.filter(q_sow)
-
-        # Pagination for SOW
-        sows_paginator = Paginator(sows_qs, 10)
-        sow_page = self.request.GET.get('sow_page')
-        context['sows'] = sows_paginator.get_page(sow_page)
-        context['sows_page_range'] = context['sows'].paginator.get_elided_page_range(context['sows'].number, on_each_side=1, on_ends=1)
-        
-        context['sow_q'] = sow_q
-        
         context['ledger_q'] = ledger_q
         
         # URL Params for Pagination Links (Preserve other filters)
         params = self.request.GET.copy()
         if 'ledger_page' in params: del params['ledger_page']
-        if 'sow_page' in params: del params['sow_page']
         context['ledger_query_params'] = params.urlencode()
-        
-        params = self.request.GET.copy()
-        if 'sow_page' in params: del params['sow_page']
-        if 'ledger_page' in params: del params['ledger_page']
-        context['sow_query_params'] = params.urlencode()
 
         # Determine active tab
         context['active_tab'] = 'ledger'
-        if 'sow_page' in self.request.GET:
-            context['active_tab'] = 'sow'
-        elif 'ledger_page' in self.request.GET:
+        if 'ledger_page' in self.request.GET:
             context['active_tab'] = 'ledger'
-        elif 'sow_q' in self.request.GET:
-            context['active_tab'] = 'sow'
 
         # URL Params for Exports (Clean all pagination)
         query_params = self.request.GET.copy()
         if 'page' in query_params: query_params.pop('page')
         if 'ledger_page' in query_params: query_params.pop('ledger_page')
-        if 'sow_page' in query_params: query_params.pop('sow_page')
         context['query_params'] = query_params.urlencode()
 
         return context
@@ -1878,6 +1341,36 @@ class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
 
 # --- POINT OF SALE (POS) SYSTEM ---
 
+def pos_tax_rate():
+    """
+    The VAT percentage currently in force, as a Decimal percentage (15.00).
+    Single source of truth so the terminal UI, the checkout endpoint and the
+    receipt can never disagree about the rate.
+    """
+    try:
+        return Decimal(str(getattr(settings, 'POS_TAX_RATE', Decimal('15.00'))))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal('15.00')
+
+
+def split_vat(total_gross, rate_percent=None):
+    """
+    Split a VAT-INCLUSIVE total into (net, tax).
+
+    Philippine retail practice: the shelf price already contains VAT, so the
+    terminal displays Subtotal (net) and Tax as an extraction from the price
+    the customer actually pays. e.g. 1000.00 at 15% -> (869.57, 130.43).
+    """
+    total_gross = Decimal(str(total_gross or '0')).quantize(Decimal('0.01'))
+    if rate_percent is None:
+        rate_percent = pos_tax_rate()
+    divisor = (Decimal('1') + (rate_percent / Decimal('100')))
+    if divisor <= 0:
+        return total_gross, Decimal('0.00')
+    net = (total_gross / divisor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return net, (total_gross - net)
+
+
 def get_walkin_customer():
     """Helper to get or create the default Walk-in Customer."""
     customer, created = Customer.objects.get_or_create(
@@ -1895,22 +1388,35 @@ def get_walkin_customer():
 @login_required
 @permission_required('inventory.add_possale', raise_exception=True)
 def pos_dashboard(request):
-    # Products
-    active_products_qs = Product.objects.filter(status=Product.Status.ACTIVE, quantity__gt=0)
+    # Products. select_related avoids an N+1 on category when the catalogue
+    # is large, which matters on the low-spec target box.
+    # Out-of-stock products are deliberately INCLUDED. The terminal renders
+    # them greyed out and un-clickable, which is what a cashier needs: if the
+    # shelf is empty the till should say so rather than the item simply
+    # vanishing, because "the product is missing" and "the product is gone"
+    # are different conversations with a customer.
+    active_products_qs = (
+        Product.objects
+        .filter(status=Product.Status.ACTIVE)
+        .select_related('category')
+        .only('id', 'name', 'sku', 'price', 'quantity', 'reorder_level', 'image', 'category__name')
+    )
 
     # Manually process to add the full image URL
     products_list =[]
     for p in active_products_qs:
-        p_dict = {
+        products_list.append({
             'id': p.id,
             'name': p.name,
             'sku': p.sku,
             'price': float(p.price),
             'quantity': p.quantity,
+            # The product's own reorder level, so the terminal's "low stock"
+            # badge agrees with the low-stock alert instead of guessing.
+            'reorder_level': p.reorder_level,
             'category__name': p.category.name if p.category else None,
             'image_url': p.image.url if p.image else None,
-        }
-        products_list.append(p_dict)
+        })
 
     products_json = json.dumps(products_list, cls=DjangoJSONEncoder)
     
@@ -1924,23 +1430,335 @@ def pos_dashboard(request):
     # Ensure Walk-in Customer exists
     walkin_customer = get_walkin_customer()
 
+    # Terminal status: open cash-drawer session + count of parked tickets.
+    open_drawer = CashDrawerSession.objects.filter(status=CashDrawerSession.Status.OPEN).first()
+    held_count = HeldSale.objects.filter(status=HeldSale.Status.ACTIVE).count()
+
+    # Single JSON blob handed to the terminal's JS. Built here (not in the
+    # template) so the payload shape is reviewable in one place.
+    config = {
+        'csrf_token': request.META.get('CSRF_COOKIE', ''),
+        'products': products_list,
+        'customers': list(customers),
+        'preselected_customer_id': preselected_customer_id,
+        'tax_rate': float(pos_tax_rate()),
+        'held_count': held_count,
+        'drawer_open': open_drawer is not None,
+        'page_size': 24,
+        'urls': {
+            'checkout': reverse('inventory:pos_checkout'),
+            'holdSave': reverse('inventory:pos_hold_save'),
+            'holdList': reverse('inventory:pos_hold_list'),
+            'holdResume': reverse('inventory:pos_hold_resume', kwargs={'ticket_id': '__ID__'}),
+            'holdDiscard': reverse('inventory:pos_hold_discard', kwargs={'ticket_id': '__ID__'}),
+            'repeatLast': reverse('inventory:pos_repeat_last'),
+            'drawerStatus': reverse('inventory:pos_drawer_status'),
+            'drawerOpen': reverse('inventory:pos_drawer_open'),
+            'drawerClose': reverse('inventory:pos_drawer_close'),
+            'customerSearch': reverse('inventory:pos_customer_search'),
+            'refundSearch': reverse('inventory:refund_search'),
+            # The "no products yet" empty state links the cashier straight to
+            # the catalogue so they can add one without hunting for the menu.
+            'productList': reverse('inventory:product_list'),
+        },
+    }
+
     context = {
         'page_title': 'Point of Sale',
         'products_json': products_json,
         'customers_json': customers_json,
         'preselected_customer_id': preselected_customer_id,
         'walkin_customer': walkin_customer,
+        'pos_tax_rate': pos_tax_rate(),
+        'open_drawer': open_drawer,
+        'held_count': held_count,
+        'config': config,
     }
     return render(request, 'inventory/pos.html', context)
 
 @login_required
-@permission_required('inventory.add_hydraulicsow', raise_exception=True)
-def pos_sow_create(request):
-    walkin = get_walkin_customer()
-    # Redirect to SOW create with next=pos_dashboard
-    url = reverse('inventory:hydraulic_sow_create', kwargs={'pk': walkin.pk})
-    next_url = reverse('inventory:pos_dashboard')
-    return redirect(f"{url}?next={next_url}")
+def pos_hold_save(request):
+    """Park the current basket (terminal 'Save sale', F9)."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    try:
+        data = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Malformed request'}, status=400)
+
+    items = data.get('items') or []
+    if not items:
+        return JsonResponse({'status': 'error', 'message': 'Nothing to save - the cart is empty.'}, status=400)
+
+    label = (data.get('label') or '').strip()[:100]
+    if not label:
+        # Default to something a human can recognise later.
+        first = items[0].get('name', 'Order')
+        label = f"{first} +{len(items) - 1}" if len(items) > 1 else str(first)[:100]
+
+    customer = None
+    if data.get('customer_id'):
+        customer = Customer.objects.filter(pk=data['customer_id']).first()
+
+    total = Decimal(str(data.get('total') or '0'))
+
+    ticket = HeldSale.objects.create(
+        label=label,
+        payload={
+            'items': items,
+            'total': str(total),
+            'customer_id': customer.pk if customer else None,
+            'customer_name': customer.name if customer else 'Walk-in Customer',
+        },
+        customer=customer,
+        cashier=request.user,
+        total_amount=total,
+    )
+    return JsonResponse({
+        'status': 'success',
+        'ticket_id': ticket.ticket_id,
+        'label': ticket.label,
+    })
+
+@login_required
+def pos_hold_list(request):
+    """Parked tickets, newest first. Used to populate the 'Save sale' drawer."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    tickets = HeldSale.objects.filter(status=HeldSale.Status.ACTIVE).select_related('cashier', 'customer')
+    return JsonResponse({
+        'status': 'success',
+        'tickets': [
+            {
+                'ticket_id': t.ticket_id,
+                'label': t.label,
+                'total': f"{t.total_amount:,.2f}",
+                'cashier': t.cashier.username if t.cashier else '',
+                'timestamp': t.timestamp.strftime('%Y-%m-%d %H:%M'),
+                'item_count': len((t.payload or {}).get('items') or []),
+            } for t in tickets
+        ],
+    })
+
+@login_required
+@require_POST
+def pos_hold_resume(request, ticket_id):
+    """Load a parked basket back into the terminal and mark the ticket resumed."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    ticket = get_object_or_404(HeldSale, ticket_id=ticket_id, status=HeldSale.Status.ACTIVE)
+    ticket.status = HeldSale.Status.RESUMED
+    ticket.resolved_at = timezone.now()
+    ticket.save(update_fields=['status', 'resolved_at'])
+    return JsonResponse({'status': 'success', 'payload': ticket.payload or {}, 'label': ticket.label})
+
+@login_required
+@require_POST
+def pos_hold_discard(request, ticket_id):
+    """Abandon a parked ticket. Kept for audit rather than deleted."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    ticket = get_object_or_404(HeldSale, ticket_id=ticket_id, status=HeldSale.Status.ACTIVE)
+    ticket.status = HeldSale.Status.DISCARDED
+    ticket.resolved_at = timezone.now()
+    ticket.save(update_fields=['status', 'resolved_at'])
+    return JsonResponse({'status': 'success'})
+
+@login_required
+def pos_repeat_last(request):
+    """
+    Return the most recent completed sale's basket so the cashier can re-ring
+    it with one keypress (the terminal's 'Repeat' button).
+    """
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    last = (
+        POSSale.objects
+        .filter(status=POSSale.Status.COMPLETED, items__isnull=False)
+        .order_by('-timestamp')
+        .distinct()
+        .first()
+    )
+    if not last:
+        return JsonResponse({'status': 'error', 'message': 'There is no previous sale to repeat.'}, status=404)
+
+    lines = (
+        last.items
+        .select_related('product', 'product__category')
+        .filter(transaction_type=StockTransaction.TransactionType.OUT)
+    )
+
+    catalogue = {
+        p.id: p for p in Product.objects.filter(id__in=[l.product_id for l in lines])
+    }
+    items = []
+    for line in lines:
+        product = catalogue.get(line.product_id)
+        if not product:
+            continue
+        items.append({
+            'id': product.id,
+            'name': product.name,
+            'sku': product.sku,
+            'price': float(line.selling_price if line.selling_price is not None else product.price),
+            'original_price': float(line.selling_price if line.selling_price is not None else product.price),
+            'qty': line.quantity,
+            'max_stock': product.quantity,
+            'comment': line.comment or '',
+            'category__name': product.category.name if product.category else None,
+        })
+
+    if not items:
+        return JsonResponse({'status': 'error', 'message': 'The previous sale has no re-rung items.'}, status=404)
+
+    return JsonResponse({
+        'status': 'success',
+        'receipt_id': last.receipt_id,
+        'customer_id': last.customer_id,
+        'customer_name': last.customer.name if last.customer else 'Walk-in Customer',
+        'items': items,
+    })
+
+# --- CASH DRAWER (open / close a shift) ---
+
+def _expected_drawer_cash(session):
+    """
+    Opening float + every cash movement in the drawer since it opened.
+    Cash in = cash sales tendered. Cash out = cash refunds processed in-window.
+    """
+    since = session.opened_at
+    cash_sales = (
+        POSSale.objects
+        .filter(timestamp__gte=since, status=POSSale.Status.COMPLETED,
+                payment_method=POSSale.PaymentMethod.CASH)
+        .exclude(total_amount=0)
+        .aggregate(total=Sum('amount_paid'))['total'] or Decimal('0')
+    )
+    cash_sales -= (
+        POSSale.objects
+        .filter(timestamp__gte=since, status=POSSale.Status.COMPLETED,
+                payment_method=POSSale.PaymentMethod.CASH)
+        .exclude(total_amount=0)
+        .aggregate(total=Sum('change_given'))['total'] or Decimal('0')
+    )
+    cash_refunds = (
+        StockTransaction.objects
+        .filter(timestamp__gte=since, transaction_type=StockTransaction.TransactionType.IN,
+                transaction_reason=StockTransaction.TransactionReason.RETURN)
+        .exclude(pos_sale__isnull=True)
+        .aggregate(total=Sum('quantity'))['total'] or 0
+    )
+    return (session.opening_float + cash_sales - cash_refunds).quantize(Decimal('0.01'))
+
+@login_required
+def pos_drawer_status(request):
+    """Current drawer state, or a plain 200 'closed' when none is open."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    session = CashDrawerSession.objects.filter(status=CashDrawerSession.Status.OPEN).first()
+    if not session:
+        return JsonResponse({'status': 'success', 'is_open': False})
+    return JsonResponse({
+        'status': 'success',
+        'is_open': True,
+        'session_id': session.pk,
+        'opened_at': session.opened_at.strftime('%Y-%m-%d %H:%M'),
+        'opened_by': session.opened_by.username if session.opened_by else '',
+        'opening_float': f"{session.opening_float:,.2f}",
+        'expected_cash': f"{_expected_drawer_cash(session):,.2f}",
+    })
+
+@login_required
+@require_POST
+def pos_drawer_open(request):
+    """Open the till with a starting float. Refuses if one is already open."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    if CashDrawerSession.objects.filter(status=CashDrawerSession.Status.OPEN).exists():
+        return JsonResponse({'status': 'error', 'message': 'A drawer session is already open. Close it first.'}, status=400)
+
+    try:
+        data = json.loads(request.body or '{}')
+        float_amount = Decimal(str(data.get('opening_float') or '0'))
+    except (json.JSONDecodeError, InvalidOperation, TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid opening float.'}, status=400)
+    if float_amount < 0:
+        return JsonResponse({'status': 'error', 'message': 'Opening float cannot be negative.'}, status=400)
+
+    session = CashDrawerSession.objects.create(opened_by=request.user, opening_float=float_amount)
+    return JsonResponse({
+        'status': 'success',
+        'session_id': session.pk,
+        'opened_at': session.opened_at.strftime('%Y-%m-%d %H:%M'),
+    })
+
+@login_required
+@require_POST
+def pos_drawer_close(request):
+    """Count the drawer, record the variance and end the shift."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+
+    try:
+        data = json.loads(request.body or '{}')
+        counted = Decimal(str(data.get('counted_cash') or '0'))
+    except (json.JSONDecodeError, InvalidOperation, TypeError, ValueError):
+        return JsonResponse({'status': 'error', 'message': 'Invalid counted amount.'}, status=400)
+    if counted < 0:
+        return JsonResponse({'status': 'error', 'message': 'Counted amount cannot be negative.'}, status=400)
+
+    # Closing a shift writes money figures, so take the session row lock and do
+    # the whole close in one transaction: two cashiers hitting Close at the same
+    # moment must not both succeed and overwrite each other's count.
+    with transaction.atomic():
+        session = (
+            CashDrawerSession.objects
+            .select_for_update()
+            .filter(status=CashDrawerSession.Status.OPEN)
+            .first()
+        )
+        if not session:
+            return JsonResponse({'status': 'error', 'message': 'No drawer session is open.'}, status=400)
+
+        expected = _expected_drawer_cash(session)
+        session.status = CashDrawerSession.Status.CLOSED
+        session.closed_by = request.user
+        session.closed_at = timezone.now()
+        session.expected_cash = expected
+        session.counted_cash = counted
+        session.difference = (counted - expected).quantize(Decimal('0.01'))
+        session.notes = (data.get('notes') or '').strip()
+        session.save()
+
+    difference = session.difference
+    return JsonResponse({
+        'status': 'success',
+        'expected': f"{expected:,.2f}",
+        'counted': f"{counted:,.2f}",
+        'difference': f"{difference:,.2f}",
+    })
+
+@login_required
+def pos_customer_search(request):
+    """Type-ahead customer lookup for the terminal's customer button."""
+    if not request.user.has_perm('inventory.add_possale'):
+        return JsonResponse({'status': 'error', 'message': 'Not permitted'}, status=403)
+    q = (request.GET.get('q') or '').strip()
+    if len(q) < 2:
+        return JsonResponse({'status': 'success', 'customers': []})
+    matches = (
+        Customer.objects
+        .filter(Q(name__icontains=q) | Q(customer_id__icontains=q) | Q(phone__icontains=q))
+        .exclude(name='Walk-in Customer')
+        .order_by('name')[:10]
+    )
+    return JsonResponse({
+        'status': 'success',
+        'customers': [
+            {'id': c.pk, 'name': c.name, 'customer_id': c.customer_id or '', 'phone': c.phone or ''}
+            for c in matches
+        ],
+    })
 
 @login_required
 @require_POST
@@ -2012,7 +1830,8 @@ def pos_checkout(request):
                 'qty': qty,
                 'price': sell_price,
                 'original_price': original_price_decimal,
-                'override_reason': override_reason
+                'override_reason': override_reason,
+                'comment': (item.get('comment') or '').strip()[:255],
             })
 
         # Credit Validation
@@ -2040,6 +1859,20 @@ def pos_checkout(request):
         if payment_description:
             txn_notes += f" | Ref: {payment_description}"
 
+        # VAT split. Shelf prices are VAT-inclusive, so the tax is extracted out
+        # of the gross the customer pays. The rate comes from settings (never the
+        # client) and is stored on the sale so the receipt keeps showing the
+        # rate that was in force at the time.
+        tax_rate = pos_tax_rate()
+        subtotal_net, tax_amount = split_vat(total_calculated_cost, tax_rate)
+
+        # Total value given away by manual line-price overrides.
+        discount_total = sum(
+            ((obj['original_price'] - obj['price']) * obj['qty']
+             for obj in item_objects if obj['price'] < obj['original_price']),
+            Decimal('0'),
+        ).quantize(Decimal('0.01'))
+
         with transaction.atomic():
             # 1. Create Sale Header
             sale_record = POSSale.objects.create(
@@ -2048,6 +1881,10 @@ def pos_checkout(request):
                 customer=customer,
                 payment_method=payment_method,
                 total_amount=total_calculated_cost, 
+                subtotal_amount=subtotal_net,
+                tax_amount=tax_amount,
+                tax_rate=tax_rate,
+                discount_amount=discount_total,
                 amount_paid=amount_paid,
                 change_given=(amount_paid - total_calculated_cost) if payment_method != 'CREDIT' else 0,
                 has_price_override=sale_has_override,
@@ -2096,6 +1933,7 @@ def pos_checkout(request):
                     selling_price=sell_price,
                     user=request.user,
                     pos_sale=sale_record,
+                    comment=item_obj.get('comment') or '',
                     notes=item_txn_notes
                 )
                 
@@ -2113,6 +1951,9 @@ def pos_checkout(request):
                 'customer_name': customer.name if customer else 'Walk-in',
                 'items': receipt_items_response,
                 'total': f"{total_calculated_cost:,.2f}",
+                'subtotal': f"{subtotal_net:,.2f}",
+                'tax': f"{tax_amount:,.2f}",
+                'tax_rate': f"{tax_rate:,.2f}",
                 'amount_paid': f"{amount_paid:,.2f}",
                 'change': f"{sale_record.change_given:,.2f}"
             })
@@ -2186,25 +2027,6 @@ class POSReceiptDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailVi
             line_total=ExpressionWrapper(F('quantity') * F('selling_price'), output_field=DecimalField())
         )
         items = list(items_qs)
-
-        # Fetch associated Hydraulic SOW specifications if this is a job receipt
-        is_job = self.object.receipt_id.startswith(('JOB-', 'SOW-'))
-        if is_job:
-            sow = HydraulicSow.objects.filter(sow_id=self.object.receipt_id).select_related('customer', 'created_by').first()
-            if sow:
-                context['sow'] = sow
-                
-                # Synthesize a service description item if no products are linked
-                if not items:
-                    service_desc = f"Hydraulic Service: {sow.hose_type} | Ø {sow.diameter} | {sow.fitting_a}/{sow.fitting_b}"
-                    if sow.application: service_desc += f" ({sow.application})"
-                    
-                    items.append({
-                        'product': {'name': service_desc, 'sku': sow.sow_id},
-                        'quantity': 1,
-                        'selling_price': self.object.total_amount,
-                        'line_total': self.object.total_amount
-                    })
 
         context['items'] = items
         return context
@@ -2795,22 +2617,6 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(recorded_by=self.request.user)
 
-@extend_schema(tags=['Customers & Billing'])
-class HydraulicSowViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for managing Hydraulic Scope of Work (SOW) jobs.
-    'created_by' is automatically set to the logged-in user on creation.
-    """
-    http_method_names =['get', 'post', 'put', 'delete', 'head', 'options']
-    queryset = HydraulicSow.objects.select_related('customer', 'created_by').all()
-    serializer_class = HydraulicSowSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['sow_id', 'customer__name', 'application', 'hose_type']
-
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
-
 @extend_schema(tags=['Point of Sale'])
 class POSSaleViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -2879,20 +2685,27 @@ def search_products(request):
 
 @login_required
 def sales_chart_data(request):
-    # Removed Hour and Minute sales as requested, defaulting to daily view
+    period = request.GET.get('period', 'day')
     now = timezone.now()
-    start_time = now - timedelta(days=30)
-    trunc_func = TruncDate('timestamp')
-    date_format = '%b %d'
 
-    # Fetch POS Sales grouped by Date and Payment Method
+    if period in ['month', '12months', 'year']:
+        start_time = now - timedelta(days=365)
+        trunc_func = TruncMonth('timestamp')
+        date_format = '%b %Y'
+        delta_step = timedelta(days=30)
+    else:
+        # Default: 7 days view
+        start_time = now - timedelta(days=7)
+        trunc_func = TruncDate('timestamp')
+        date_format = '%a, %b %d'
+        delta_step = timedelta(days=1)
+
     sales_qs = POSSale.objects.filter(timestamp__gte=start_time).annotate(
         period_group=trunc_func
     ).values('period_group', 'payment_method').annotate(
         total=Sum('total_amount')
     ).order_by('period_group')
     
-    # Organize data into dictionaries
     sales_by_date = {}
     charges_by_date = {}
 
@@ -2904,13 +2717,11 @@ def sales_chart_data(request):
         if entry['payment_method'] == 'CREDIT':
             charges_by_date[d] = charges_by_date.get(d, 0) + amount
         else:
-            # Group CASH and CARD as "Sales" (Revenue realized immediately)
             sales_by_date[d] = sales_by_date.get(d, 0) + amount
 
-    # Generate continuous date range
     labels = []
-    sales_data =[]
-    charges_data =[]
+    sales_data = []
+    charges_data = []
     
     current_date = start_time.date()
     end_date = now.date()
@@ -2919,8 +2730,15 @@ def sales_chart_data(request):
         labels.append(current_date.strftime(date_format))
         sales_data.append(sales_by_date.get(current_date, 0))
         charges_data.append(charges_by_date.get(current_date, 0))
-        current_date += timedelta(days=1)
+        current_date += delta_step
     
+    # If empty, provide a clean preview point for visual representation
+    if not any(sales_data):
+        if len(labels) == 0:
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            sales_data = [0, 0, 0, 0, 0, 0, 0]
+            charges_data = [0, 0, 0, 0, 0, 0, 0]
+
     return JsonResponse({
         'labels': labels, 
         'sales_data': sales_data,
@@ -2956,7 +2774,7 @@ def format_audit_datetime(dt_str):
         # Convert to local time
         local_dt = timezone.localtime(dt)
         return local_dt.strftime("%m/%d/%Y, %I:%M %p")
-    except:
+    except (ValueError, TypeError, AttributeError):
         return dt_str
 
 def process_history_records(history_records):

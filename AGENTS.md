@@ -63,7 +63,8 @@ The dev server is **shared infrastructure for every session on this machine**. I
 - **NEVER launch `manage.py runserver` directly**, in the foreground or as a background job. A session-bound job is killed whenever that agent session restarts, which takes the server down for everyone and shows up as `ERR_CONNECTION_REFUSED`. The script launches it **detached** precisely so it outlives any session.
 - **NEVER kill the server to "fix" it**, and never kill a server you did not start. It is not yours. Restarting it interrupts every other session. If the port is occupied by something unresponsive, **report it and ask the human** — do not force-kill.
 - **Why duplicates are dangerous:** on Windows, multiple sockets can bind port 8000 simultaneously (`SO_REUSEADDR`), so a second `runserver` does not fail loudly — it silently steals requests at random. This produces intermittent, unreproducible errors.
-- **The server runs with `--noreload`**, which suits this low-spec box but means **code changes require an explicit `restart`**. If you change Python code and the browser still shows old behaviour, that is why — ask the human before restarting, since it affects other sessions.
+- **The server runs with `--noreload`**, which suits this low-spec box but means **Python code changes require an explicit `restart`**. If you change Python code and the browser still shows old behaviour, that is why — ask the human before restarting, since it affects other sessions.
+- **Template edits DO hot-reload — but only because the script arranges it.** Django ≥ 2.0 always wraps template loaders in `cached.Loader`, *even with `DEBUG=True`*, so a plain `runserver` would keep serving stale HTML until restart. `scripts/server.ps1` therefore starts the dev server with `TEMPLATE_CACHE=false`, which bypasses the cache: a `.html` edit shows up on the next browser refresh, no restart needed. If you ever start a server by any other means, you lose that and are back to restarting for template edits. `.\scripts\verify.ps1` warns when a `.py` file is newer than the running server.
 - **Health probe:** `http://127.0.0.1:8000/accounts/login/` returns `200` for anonymous users. Any HTTP response (even `500`) proves the server process is alive; a TCP refusal means it is down.
 - **Logs:** `%TEMP%\alberto_server\runserver.log` and `runserver.err.log`. Read these before assuming a server problem is a code problem.
 
@@ -79,9 +80,14 @@ The dev server is **shared infrastructure for every session on this machine**. I
 - Only stage (`git add`) the exact files modified for your specific task.
 - **Other sessions' uncommitted changes are not yours.** `git status` will regularly show files
   you did not touch. Leave them alone — do not revert, do not `git add -A`, do not commit them.
-- **Branch safety:** `main` → Beta (client testing, auto-deploys), `staging` → Alpha (internal
-  testing, auto-deploys). Check `git branch --show-current` before committing. **Never push to
-  `main` or `staging` without explicit human approval** — pushing to either triggers a deploy.
+- **Branch safety:** the system is **local-only as of 2026-09-30** — there is no online
+  deployment, so pushing **does not deploy anything** and the old "`main` auto-deploys to Beta"
+  rule no longer applies. `alberto_system/render.yaml` / `build.sh` / `Dockerfile` are obsolete
+  leftovers. Still check `git branch --show-current` and confirm with the human before pushing,
+  because the remote may be shared — but the reason is coordination, not deploys.
+- **The local database is the only copy of the business data.** There is no cloud backup. Run
+  `.\scripts\backup.ps1` after any risky change (migrations, bulk edits) and whenever the human
+  asks. Never delete `db.sqlite3`, and never run `flush`.
 
 ---
 
@@ -100,7 +106,19 @@ The dev server is **shared infrastructure for every session on this machine**. I
 
 ---
 
-## 7. Project Identity & Default Credentials
+## 7. Code Quality & Architecture Standards
+
+1. **Zero Root Clutter**: Never create loose test/debug scripts in the root directory. For ad-hoc debugging, run Python one-liners or place temporary files in a temp folder and delete them immediately.
+2. **HTML Template Balance Guard**: When modifying any template, verify `<div>` balance (`<div\b` count == `</div>` count). Never nest Bootstrap modals inside other modals or parent containers with `overflow: hidden`.
+3. **The Orchestrator Pattern**: Keep parent templates as lightweight orchestrators composed of `{% include %}` tags. Add new UI features as isolated partials. Template files should not exceed 400 lines. Python view modules should not exceed 400 lines.
+4. **Financial Integrity**: Always wrap payment, refund, or cancellation mutations in `transaction.atomic()` with `select_for_update()`. Never bypass Django signals when updating customer balances.
+5. **Brand Design System Consistency**: Use defined design tokens (`--brand-primary`, `--brand-dark`, etc.) and CSS classes. Never hardcode inline hex colors in templates.
+6. **The No-Repeat-Failure Wall**: If a fix doesn't work, do NOT retry the same approach. Check logs for the new error, ask the user for browser console output, or pivot to a different approach. Maximum 2 attempts on the same bug using the same strategy before escalating.
+7. **The Business Reality Check**: If a prompt contains backwards logic, creates redundant models, or contradicts real-world grocery operations, alert the user immediately, explain the conflict in plain English, and propose a solution before proceeding.
+
+---
+
+## 8. Project Identity & Default Credentials
 - **Brand Name**: **Alberto Grocers** / **Alberto Inventory POS**
 - **Default Superuser**: `admin` / `123`
 - **Branding Assets**:

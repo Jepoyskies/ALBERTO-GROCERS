@@ -1,0 +1,180 @@
+{% comment %}
+POS TERMINAL - order-level modals: line discount, line comment, park/transfer
+an order, and the parked-orders list (F9).
+The customer-lookup modal was removed with the customer pill on the order pane.
+{% endcomment %}
+<div class="modal-scrim" id="modalDiscount">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-percent"></i>
+            <h3>Adjust price &middot; <span class="head-sub" id="discName"></span></h3>
+            <button type="button" class="modal-close" data-close="modalDiscount">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="disc-quick">
+                <button type="button" class="qc-btn" data-pct="5">5% off</button>
+                <button type="button" class="qc-btn" data-pct="10">10% off</button>
+                <button type="button" class="qc-btn" data-pct="20">20% off</button>
+                <button type="button" class="qc-btn" data-pct="50">50% off</button>
+            </div>
+            <div class="field">
+                <label for="discInput">New unit price</label>
+                <input type="text" inputmode="decimal" class="ctl ctl-amount" id="discInput"
+                       placeholder="0.00" autocomplete="off">
+                <p class="hint">Shelf price <span id="discCurrent"></span> &middot; <span id="discWas"></span></p>
+            </div>
+            <div class="field">
+                <label for="discReason">Reason <span class="req">*</span></label>
+                <input type="text" class="ctl" id="discReason"
+                       placeholder="Required whenever the price is reduced" autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalDiscount">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnApplyDiscount">Apply</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalComment">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-comment-dots"></i>
+            <h3>Line comment &middot; <span class="head-sub" id="cmtName"></span></h3>
+            <button type="button" class="modal-close" data-close="modalComment">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label for="cmtInput">Note for this line</label>
+                <textarea class="ctl" id="cmtInput" maxlength="255"
+                          placeholder="e.g. customer asked for a separate bag, damaged box, special order..."></textarea>
+                <p class="hint">Saved with the receipt and visible in the transaction log.</p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalComment">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnApplyComment">Save</button>
+        </div>
+    </div>
+</div>
+
+{% comment %}
+QUANTITY (F4)
+Arms a multiplier for the NEXT item added. The cashier types 4, taps a product
+and it lands as 4x - the arming is then spent and the terminal is back to one
+at a time, so nothing can be accidentally quadrupled two products later.
+{% endcomment %}
+<div class="modal-scrim" id="modalQty">
+    <div class="modal modal-qty">
+        <div class="modal-head">
+            <i class="fa-solid fa-calculator"></i>
+            <h3>Quantity for next item</h3>
+            <button type="button" class="modal-close" data-close="modalQty">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="qty-quick">
+                <button type="button" class="qc-btn" data-q="2">2</button>
+                <button type="button" class="qc-btn" data-q="3">3</button>
+                <button type="button" class="qc-btn" data-q="4">4</button>
+                <button type="button" class="qc-btn" data-q="5">5</button>
+                <button type="button" class="qc-btn" data-q="6">6</button>
+                <button type="button" class="qc-btn" data-q="12">12</button>
+            </div>
+            <div class="field">
+                <label for="qtyInput">How many?</label>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" class="ctl ctl-amount" id="qtyInput"
+                       placeholder="1" autocomplete="off">
+                <p class="hint">
+                    The next product you tap or scan is added this many times.
+                    If it is already in the order, this many more are added.
+                    Afterwards it goes back to <strong>1</strong>.
+                </p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalQty">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnApplyQty">Set quantity</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalHeld">
+    <div class="modal modal-wide">
+        <div class="modal-head">
+            <i class="fa-solid fa-box-archive"></i>
+            <h3>Parked orders</h3>
+            <button type="button" class="modal-close" data-close="modalHeld">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="ticket-list" id="heldList"></div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalHeld">Close</button>
+            <button type="button" class="btn btn-primary" id="btnParkCurrent">
+                <i class="fa-solid fa-plus"></i> Park current order
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalSave">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-box-archive"></i>
+            <h3>Park this order</h3>
+            <button type="button" class="modal-close" data-close="modalSave">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label for="saveLabel">Label</label>
+                <input type="text" class="ctl" id="saveLabel" maxlength="100"
+                       placeholder="e.g. Maria - 2 bags" autocomplete="off">
+                <p class="hint">
+                    Total <span id="saveTotal"></span>. The basket is stored on the server,
+                    so you can reload or walk away safely.
+                </p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalSave">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnSaveConfirm">Park order</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalTransfer">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-right-left"></i>
+            <h3>Transfer order</h3>
+            <button type="button" class="modal-close" data-close="modalTransfer">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label for="trfTo">Hand off to</label>
+                <input type="text" class="ctl" id="trfTo"
+                       placeholder="Till 2, or a staff member's name" autocomplete="off">
+                <p class="hint">
+                    The order is parked as <strong id="trfTotal"></strong> and becomes
+                    available to the rest of the floor.
+                </p>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalTransfer">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btnDoTransfer">Transfer</button>
+        </div>
+    </div>
+</div>

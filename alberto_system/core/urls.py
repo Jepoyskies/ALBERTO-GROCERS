@@ -21,8 +21,11 @@ from inventory.views import CustomLoginView
 from . import views
 
 urlpatterns =[
-    # --- 1. Main Dashboard ---
-    path('', views.home, name='home'),
+    # --- 1. Main Entry Point & Dashboard ---
+    # The bare domain opens the POS terminal (cashiers live on the till);
+    # the dashboard is preserved at /dashboard/ and linked from the terminal.
+    path('', views.landing, name='home'),
+    path('dashboard/', views.home, name='dashboard'),
     
     # --- 2. Admin Interface ---
     path('admin/', admin.site.urls),

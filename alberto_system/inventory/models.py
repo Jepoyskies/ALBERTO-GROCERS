@@ -32,11 +32,6 @@ def generate_customer_id():
     return f"CUST-{uuid.uuid4().hex[:8].upper()}"
 
 
-def generate_sow_id():
-    """Generates a unique SOW ID like 'JOB-1A2B3C4D'"""
-    return f"JOB-{uuid.uuid4().hex[:8].upper()}"
-
-
 # --- CUSTOMER & BILLING MODELS ---
 
 class Customer(models.Model):
@@ -101,42 +96,6 @@ class CustomerPayment(models.Model):
 
     def __str__(self):
         return f"Payment {self.amount} - {self.customer.name}"
-
-
-class HydraulicSow(models.Model):
-    """
-    Represents a Scope of Work (SOW) for custom hydraulic hose assemblies.
-    Stores technical specifications such as hose type, diameter, fittings, and associated costs.
-    """
-    sow_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sows')
-    date_created = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    
-    hose_type = models.CharField(max_length=100, blank=True)
-    diameter = models.CharField(max_length=50, blank=True)
-    length = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    pressure = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    application = models.CharField(max_length=200, blank=True)
-    
-    fitting_a = models.CharField(max_length=100, blank=True)
-    fitting_b = models.CharField(max_length=100, blank=True)
-    orientation = models.IntegerField(null=True, blank=True, help_text="Angle in degrees")
-    protection = models.CharField(max_length=50, blank=True)
-    cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Cost of the customization service.")
-    
-    notes = models.TextField(blank=True)
-
-    class Meta:
-        ordering = ['-date_created']
-
-    def save(self, *args, **kwargs):
-        if not self.sow_id:
-            self.sow_id = generate_sow_id()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.sow_id} - {self.customer.name}"
 
 
 # --- EXPENSE TRACKING ---
@@ -205,7 +164,27 @@ class POSSale(models.Model):
     due_date = models.DateField(null=True, blank=True, help_text="If Credit, when is payment due?")
 
     # Financials
+    # NOTE: Philippine retail VAT practice - shelf prices are VAT-INCLUSIVE.
+    # `total_amount` is therefore the GROSS figure the customer actually pays
+    # (and stays the value every existing report/dashboard query already sums).
+    # `subtotal_amount` is the tax-extracted net, and the difference is VAT.
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    subtotal_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Net (VAT-extracted) amount. total_amount - subtotal_amount = tax_amount."
+    )
+    tax_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="VAT component included in total_amount."
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal('15.00'),
+        help_text="VAT percentage applied at the time of sale, so history never silently changes."
+    )
+    discount_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Total value given away via manual line-price overrides on this sale."
+    )
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     change_given = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     notes = models.TextField(blank=True, help_text="Transaction notes or description")
@@ -242,8 +221,6 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
 
-from cloudinary.models import CloudinaryField
-
 class Product(models.Model):
     """
     The core inventory item. Tracks current stock quantity, pricing, and active status.
@@ -253,7 +230,7 @@ class Product(models.Model):
         ACTIVE = 'ACTIVE', 'Active'
         DEACTIVATED = 'DEACTIVATED', 'Deactivated'
 
-    image = CloudinaryField('image', blank=True, null=True)
+    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
     name = models.CharField(max_length=200, unique=True, help_text='Enter the product name', db_index=True)
     sku = models.CharField(max_length=100, unique=True, help_text='Enter the Stock Keeping Unit (SKU)', db_index=True)
     
@@ -328,6 +305,10 @@ class StockTransaction(models.Model):
     quantity = models.PositiveIntegerField()
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     notes = models.TextField(blank=True, null=True, help_text="Reason for the transaction")
+    comment = models.CharField(
+        max_length=255, blank=True, default='',
+        help_text="Cashier note attached to a POS sale line (e.g. 'customer asked for a bag')."
+    )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     
     selling_price = models.DecimalField(
@@ -393,6 +374,83 @@ class CancellationReason(models.Model):
 
     def __str__(self):
         return f"Reason for {self.pos_sale.receipt_id}: {self.reason[:50]}"
+
+
+class HeldSale(models.Model):
+    """
+    A parked / held order (the terminal's "Save sale", F9).
+
+    The in-progress basket is snapshotted to JSON so a cashier can serve the
+    next customer, walk away, or survive a page reload and come back to it.
+    Resuming or discarding flips `status`; nothing is ever hard-deleted so the
+    audit trail of what was parked and when survives.
+    """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Parked'
+        RESUMED = 'RESUMED', 'Resumed'
+        DISCARDED = 'DISCARDED', 'Discarded'
+
+    ticket_id = models.CharField(max_length=50, unique=True, editable=False)
+    label = models.CharField(max_length=100, help_text="Short cashier-supplied name, e.g. 'Maria - 2 bags'.")
+    payload = models.JSONField(
+        default=dict,
+        help_text="Snapshot of the basket: items, totals, customer id, comments."
+    )
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
+    cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='held_sales')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    resolved_at = models.DateTimeField(null=True, blank=True, help_text="When the ticket was resumed or discarded.")
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "Held Sale"
+        verbose_name_plural = "Held Sales"
+
+    def save(self, *args, **kwargs):
+        if not self.ticket_id:
+            self.ticket_id = f"HLD-{uuid.uuid4().hex[:6].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.ticket_id} - {self.label}"
+
+
+class CashDrawerSession(models.Model):
+    """
+    A cash-drawer open/close session (shift) for the terminal.
+
+    Tracks the opening float, the cash the POS expected to be in the drawer at
+    close (opening float + cash sales - cash refunds), and what was actually
+    counted, so over/short is auditable.
+    """
+    class Status(models.TextChoices):
+        OPEN = 'OPEN', 'Open'
+        CLOSED = 'CLOSED', 'Closed'
+
+    status = models.CharField(max_length=6, choices=Status.choices, default=Status.OPEN, db_index=True)
+    opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='drawer_sessions_opened')
+    opened_at = models.DateTimeField(default=timezone.now, db_index=True)
+    opening_float = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Cash placed in the drawer at open.")
+    closed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='drawer_sessions_closed')
+    closed_at = models.DateTimeField(null=True, blank=True)
+    expected_cash = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Float + net cash movement while open.")
+    counted_cash = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Cash physically counted at close.")
+    difference = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="counted - expected; negative means short.")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-opened_at']
+        verbose_name = "Cash Drawer Session"
+        verbose_name_plural = "Cash Drawer Sessions"
+
+    @property
+    def is_open(self):
+        return self.status == self.Status.OPEN
+
+    def __str__(self):
+        return f"Drawer {self.get_status_display()} @ {self.opened_at:%Y-%m-%d %H:%M}"
 
 
 class Supplier(models.Model):

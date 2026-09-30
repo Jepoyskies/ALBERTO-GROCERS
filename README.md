@@ -8,19 +8,23 @@ A comprehensive inventory and Point of Sale (POS) operations system customized f
 
 ## Deployment Environments
 
-This project utilizes dedicated branches and Render hosting tiers for testing and production.
+**This system is local-only (decided 2026-09-30).** It runs entirely on the shop's own PC:
+one Django dev server on `127.0.0.1:8000` and one local SQLite database at
+`alberto_system/db.sqlite3`. There is no online deployment, no cloud database, and no
+external service of any kind.
 
-### Alpha Environment (Internal Testing)
-*   **Purpose:** Development and internal alpha testing.
-*   **Branch:** `staging`
-*   **Hosting:** [Render (Free Tier)](https://rl-ios-alpha-web.onrender.com/)
+*   **Start / stop the app:** `.\scripts\server.ps1 start` (or `stop` / `restart` / `status`).
+*   **Health check:** `.\scripts\verify.ps1` — prints `GREENLIGHT` or `NOT GREEN`.
+*   **Back up the data:** `.\scripts\backup.ps1` — verified snapshot, `-List`, `-Restore`.
+    The local `db.sqlite3` is the *only* copy of the business data, so back it up regularly.
+*   **Branches:** `main` and `staging` are kept for history only. Pushing does not deploy.
 
-### Beta Environment (External/Client Testing)
-*   **Purpose:** External acceptance testing and production preview.
-*   **Branch:** `main`
-*   **Hosting:** [Render (Paid Tier)](https://rl-ios-beta.onrender.com/)
+`alberto_system/render.yaml`, `alberto_system/build.sh` and `Dockerfile` are obsolete
+leftovers from the previous hosted setup. They are harmless and no longer part of the
+workflow.
 
-See the [Deployment and Testing Document](Group#_DeployStage.pdf) for detailed test plans, merge history, and feedback results.
+See the [Deployment and Testing Document](Group#_DeployStage.pdf) for the historical test
+plans, merge history, and feedback results from when the project was hosted online.
 
 
 *   **Product & Stock Management:** Detailed tracking of products, categories, and real-time stock levels.
@@ -32,9 +36,9 @@ See the [Deployment and Testing Document](Group#_DeployStage.pdf) for detailed t
 ## Tech Stack
 
 *   **Backend:** Python 3.11+, Django 5.2
-*   **Database:** SQLite (Local) / PostgreSQL (Production via `DATABASE_URL`)
+*   **Database:** SQLite (local, the only database used)
 *   **Frontend:** Bootstrap 5, Vanilla JavaScript
-*   **DevOps:** Docker, WhiteNoise (Static Files), Render (Deployment)
+*   **Media:** local files under `alberto_system/media/` (product images, expense receipts)
 *   **Security:** `django-ratelimit` (Rate Limiting)
 
 ---
@@ -55,12 +59,13 @@ DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 ```
 
-**Database:** leave `DATABASE_URL` **unset** locally. `core/settings.py` then falls back to
-SQLite at `alberto_system/db.sqlite3`, which requires no server and no configuration. Set
-`DATABASE_URL` only for PostgreSQL (Render/production), e.g.
-`DATABASE_URL=postgresql://user:pass@host:5432/dbname`.
+**Database:** leave `DATABASE_URL` **unset**. `core/settings.py` then uses SQLite at
+`alberto_system/db.sqlite3`, which needs no server and no configuration. This is the only
+database the system uses — there is no PostgreSQL in the local-only setup.
 
-*Note: For production (Render), these variables are managed via the Render Dashboard environment settings.*
+*Note: `DEBUG=True` is correct here and is now also the default in `settings.py`, so a lost
+`.env` cannot silently switch on production HTTPS settings and break local access. Leave the
+`CLOUDINARY_*` values **empty** — media is stored locally under `alberto_system/media/`.*
 
 ---
 

@@ -1,0 +1,76 @@
+{% comment %}
+POS TERMINAL - product catalogue (right pane).
+Density switch, the big search pill (the barcode scanner's home), the
+on-screen keyboard toggle, the category filter pills, the tile grid and the
+touch-sized pager. Tiles are rendered by renderCatalog() in static/pos/pos.js.
+{% endcomment %}
+<section class="catalog-pane">
+
+    <div class="catalog-bar">
+        {% comment %}Density as a clean segmented control: compact /
+        comfortable / large. Same buttons, same .view-btn / data-view hooks.{% endcomment %}
+        <div class="view-modes" role="group" aria-label="Tile density">
+            <button type="button" class="view-btn active" data-view="comfortable" title="Comfortable tiles" aria-pressed="true">
+                <i class="fa-solid fa-table-cells" aria-hidden="true"></i>
+                <span class="view-btn-lbl">Comfortable</span>
+            </button>
+            <button type="button" class="view-btn" data-view="compact" title="Compact tiles" aria-pressed="false">
+                <i class="fa-solid fa-grip" aria-hidden="true"></i>
+                <span class="view-btn-lbl">Compact</span>
+            </button>
+            <button type="button" class="view-btn" data-view="large" title="Large tiles" aria-pressed="false">
+                <i class="fa-solid fa-border-all" aria-hidden="true"></i>
+                <span class="view-btn-lbl">Large</span>
+            </button>
+        </div>
+
+        {% comment %}The search pill. Always focused so a barcode scanner,
+        which types like a keyboard, lands here without anyone clicking.{% endcomment %}
+        <div class="cat-search">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <input type="text" id="productSearch"
+                   placeholder="Search products by name or scan a barcode"
+                   autocomplete="off" spellcheck="false"
+                   aria-label="Search products or scan a barcode">
+            <button type="button" class="cat-search-clear" id="btnSearchClear" title="Clear search" hidden>
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <button type="button" class="icon-btn" id="btnOsk" title="On-screen keyboard" aria-pressed="false">
+            <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn" id="btnHelp" title="Keyboard shortcuts (F1 search, F10 payment)">
+            <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <div class="cat-filters" id="catFilters" role="group" aria-label="Filter by category"></div>
+
+    <div class="catalog-grid" id="productGrid"></div>
+
+    {% comment %}Pagination as the reference's page buttons, sized for a
+    finger. Page numbers are rendered by renderCatalog().{% endcomment %}
+    <div class="catalog-foot">
+        <span class="page-info" id="pageInfo">Page 1 / 1</span>
+        <div class="pager" role="group" aria-label="Catalogue pages">
+            <button type="button" class="pager-btn" id="pgHome" title="First page">
+                <i class="fa-solid fa-house" aria-hidden="true"></i>
+            </button>
+            <span class="divider" aria-hidden="true"></span>
+            <button type="button" class="pager-btn" id="pgFirst" title="First page">
+                <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="pager-btn" id="pgPrev" title="Previous page">
+                <i class="fa-solid fa-angle-left" aria-hidden="true"></i>
+            </button>
+            <div class="pg-numbers" id="pgNumbers"></div>
+            <button type="button" class="pager-btn" id="pgNext" title="Next page">
+                <i class="fa-solid fa-angle-right" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="pager-btn" id="pgLast" title="Last page">
+                <i class="fa-solid fa-angles-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+</section>

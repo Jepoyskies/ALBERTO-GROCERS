@@ -1,0 +1,60 @@
+{% comment %}
+POS TERMINAL - the order (left pane).
+Delete + Quantity + item count header, the line list, the
+Total block and the Void / Lock / Repeat action bar.
+LAYOUT LOCK: this order is what staff are trained on - do not move anything.
+Line markup is rendered by renderCart() in static/pos/pos.js.
+{% endcomment %}
+<section class="cart-pane">
+
+    <div class="cart-head">
+        <button type="button" class="ag-icon-btn ag-icon-btn--danger ag-icon-btn--labelled" id="btnDelete"
+                title="Delete selected line (F8)">
+            <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Delete
+        </button>
+        <span class="ch-cell ch-grow"><span id="itemCount">0</span> item(s)</span>
+        {% comment %}
+        QUANTITY (F4) lives here rather than in the toolbar: the toolbar was
+        already exactly full at this screen's width, so a ninth button pushed
+        the payment keys off the edge. The column header is also the natural
+        home for it - the cashier is looking at the quantity column when they
+        want to change how many they are selling. The badge shows the armed
+        multiplier, so a live one is never hidden in a closed dialog.
+        {% endcomment %}
+        <button type="button" class="ch-cell qty qty-key" id="btnQty" data-act="qty"
+                title="Set the quantity for the next item (F4)"
+                aria-label="Set the quantity for the next item, F4">
+            Quantity
+            <span class="qty-badge" id="qtyBadge" hidden>&times;1</span>
+        </button>
+        <span class="ch-cell total">Total</span>
+    </div>
+
+    {% comment %}The customer picker was removed on request: the till always
+    rings up as Walk-in. setCustomer() in static/pos/pos.js still runs (it is
+    driven by resumed/repeated sales) but is null-safe about the missing DOM.{% endcomment %}
+    <div class="cart-list" id="cartList"></div>
+
+    {% comment %}Shelf prices are fixed and already VAT-inclusive, so there is
+    nothing to add at the till. One figure only: the amount the customer pays.
+    VAT is still split out server-side and stored on the sale record for
+    reporting - it is just not shown to the cashier.{% endcomment %}
+    <div class="cart-foot">
+        <div class="sum-row sum-total">
+            <span>Total</span>
+            <span id="sumTotal">&#8369;0.00</span>
+        </div>
+    </div>
+
+    <div class="cart-actions">
+        <button type="button" class="act-btn act-void" id="btnVoid" title="Void the whole order">
+            <i class="fa-solid fa-ban" aria-hidden="true"></i> Void order
+        </button>
+        <button type="button" class="act-btn act-secondary" id="btnLock" title="Lock the terminal (F11)">
+            <i class="fa-solid fa-lock" aria-hidden="true"></i> Lock
+        </button>
+        <button type="button" class="act-btn act-secondary" id="btnRepeat" title="Re-ring the last sale">
+            <i class="fa-solid fa-repeat" aria-hidden="true"></i> Repeat
+        </button>
+    </div>
+</section>

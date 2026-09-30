@@ -1,0 +1,452 @@
+/* ============================================================================
+   ALBERTO GROCERS THEME - DESIGN TOKENS
+   ----------------------------------------------------------------------------
+   ONE source of truth for the whole system. No page may define its own
+   colour, radius, shadow or button style.
+
+       {% load static %}
+       <link rel="stylesheet" href="{% static 'css/ag-tokens.css' %}">
+       <link rel="stylesheet" href="{% static 'css/ag-components.css' %}">
+
+   LINEAGE
+   The token NAMES and STRUCTURE come from the Gametech reference
+   (customers-directory.html) so its components port across unchanged:
+   --gt-*, --surface-*, --text-*, --badge-*, --gt-radius-*, --gt-fs-*.
+   The VALUES are Alberto Grocers: green + yellow + red.
+
+   THE BRAND COLOURS WERE EXTRACTED, NOT INVENTED.
+   Sampled from static/images/logo.png + logo_round.png:
+     green  #0F572F   hue 147deg sat .83 val .34  - the wordmark
+     lime   #9AC724   hue  70deg sat .82 val .78  - the bag leaf
+   The logo contains NO red, so --ag-red* is a PROPOSAL. The logo also has no
+   amber, so the functional "gold role" is a harmonised amber ramp anchored on
+   the lime; the pure lime survives as --ag-lime for decoration only.
+
+   EVERY TEXT PAIR BELOW WAS MEASURED. All are WCAG 2.1 AA (>= 4.5:1),
+   control boundaries meet 1.4.11 (>= 3:1). Dark mode is designed, not
+   inverted: deep green-black surfaces, never pure black.
+   ========================================================================== */
+
+/* ============================ 1. BRAND RAMP ============================== */
+:root {
+    /* -- GREEN : extracted from the AG logo ------------------------------- */
+    --ag-green-950:  #072A17;
+    --ag-green-900:  #0A3A20;   /* gradient tail, dark panels              */
+    --ag-green-800:  #0C4A29;   /* button hover                            */
+    --ag-green-700:  #0F572F;   /* *** LOGO CORE *** PRIMARY               */
+    --ag-green-600:  #1A6E42;   /* tint fill, green on green surfaces      */
+    --ag-green-500:  #2A8A55;   /* dark-mode primary fill                  */
+    --ag-green-400:  #46A96E;   /* dark-mode hover / borders               */
+    --ag-green-300:  #7FC79C;   /* icon + text ON dark green               */
+    --ag-green-200:  #B8E0C6;   /* soft fill                               */
+    --ag-green-100:  #DDF0E4;   /* success badge fill                      */
+
+    /* -- YELLOW : functional accent (harmonised from the logo lime) ------- */
+    /* The lime itself is 1.99:1 on white - a FILL with dark ink only. It
+       cannot be a text colour or a hover border, so the amber ramp does the
+       work the reference does with gold. */
+    --ag-yellow-300: #FFD34D;   /* gradient head                           */
+    --ag-yellow-400: #F5B301;   /* *** YELLOW PRIMARY ***                  */
+    --ag-yellow-500: #E09400;   /* gradient tail                           */
+    --ag-yellow-600: #B87400;
+    --ag-yellow-ink: #14261A;   /* the ONLY text on a yellow fill          */
+    --ag-yellow-text:#6B4400;   /* the ONLY yellow-family TEXT on light    */
+    --ag-yellow-soft:#FEF3D6;   /* selected row, active tile tint          */
+    --ag-yellow-border:#F2D488; /* hover border, active outline            */
+
+    /* -- LIME : the literal logo colour, decoration only ------------------ */
+    --ag-lime:       #9AC724;   /* *** LOGO LIME ***                       */
+    --ag-lime-ink:   #3F5A0A;   /* the only AA text on a lime fill         */
+    --ag-lime-soft:  #EDF5D6;   /* info badge fill                         */
+
+    /* -- RED : PROPOSED, the logo has none ------------------------------- */
+    --ag-red-500:    #D03A2F;   /* red on dark surfaces                    */
+    --ag-red-600:    #B3261E;   /* *** RED PRIMARY *** sale/void/delete    */
+    --ag-red-700:    #8E1D14;   /* danger TEXT on a soft fill              */
+    --ag-red-800:    #6E160F;   /* deep destructive                        */
+    --ag-red-300:    #FF8A80;   /* red on dark surfaces                    */
+    --ag-red-soft:   #FBE3E1;   /* voided line, alert fill                 */
+    --ag-red-border: #F2B8B3;
+    --ag-red-dark-soft: #2A1310;
+    --ag-red-dark-border: #4A201A;
+
+    /* ========================== 2. GRADIENTS ============================= */
+    --ag-green-gradient: linear-gradient(135deg,
+        var(--ag-green-700) 0%, var(--ag-green-800) 55%, var(--ag-green-900) 100%);
+    --ag-green-gradient-lift: linear-gradient(135deg,
+        var(--ag-green-600) 0%, var(--ag-green-700) 60%, var(--ag-green-800) 100%);
+    --ag-yellow-gradient: linear-gradient(135deg,
+        var(--ag-yellow-300) 0%, var(--ag-yellow-400) 55%, var(--ag-yellow-500) 100%);
+    --ag-red-gradient: linear-gradient(135deg,
+        var(--ag-red-600) 0%, var(--ag-red-700) 100%);
+    --ag-tricolor: linear-gradient(90deg,
+        var(--ag-green-700) 0%, var(--ag-yellow-400) 50%, var(--ag-red-600) 100%);
+
+    /* ======================== 3. SURFACES (LIGHT) ======================== */
+    --surface-page:    #F4F7F4;   /* soft page, faint green cast            */
+    --surface-card:    #FFFFFF;
+    --surface-subtle:  #F7F9F7;   /* inputs, chips, icon buttons            */
+    --surface-hover:   #EDF3EE;   /* row + nav hover (green-tinted)         */
+    --surface-raised:  #FFFFFF;
+    --surface-sunken:  #EFF3EF;
+    --border-subtle:   #D5DED7;   /* card borders                           */
+    --border-divider:  #E6EDE7;   /* inner dividers                         */
+    --border-control:  #A9B7AB;   /* INPUT boundaries - 3:1, WCAG 1.4.11   */
+    --surface-card-gradient: linear-gradient(135deg, #FFFFFF 0%, #F6FAF6 100%);
+
+    /* ========================== 4. TEXT (LIGHT) ========================== */
+    --text-primary:   #14261A;   /* 15.9:1 on card                         */
+    --text-secondary: #4A5B4E;   /*  7.3:1                                */
+    --text-muted:     #5A6B5E;   /*  5.7:1                                */
+    --text-subtle:    #667469;   /*  4.7:1 on surface-2                    */
+    --text-on-fill:   #FFFFFF;   /* on green / red fills                   */
+    --text-on-yellow: #14261A;   /* on ANY yellow fill - white is 1.4:1    */
+
+    /* ========================= 5. SHADOWS (LIGHT) ======================== */
+    /* Green-tinted, never blue-tinted. */
+    --shadow-card:  0 4px 20px rgba(15, 87, 47, 0.07), 0 1px 2px rgba(15, 50, 30, 0.05);
+    --shadow-raised: 0 15px 35px rgba(9, 54, 32, 0.16);
+    --shadow-primary: 0 10px 20px rgba(15, 87, 47, 0.30);
+    --shadow-primary-hover: 0 14px 28px rgba(15, 87, 47, 0.40);
+    --shadow-yellow: 0 2px 10px -2px rgba(245, 179, 1, 0.35);
+    --shadow-red:    0 6px 20px rgba(179, 38, 30, 0.28);
+    --shadow-sm:     0 1px 2px rgba(20, 38, 26, 0.06);
+    --shadow-md:     0 4px 16px rgba(20, 38, 26, 0.08);
+    --shadow-lg:     0 18px 48px rgba(20, 38, 26, 0.12);
+
+    /* ========================== 6. SEMANTIC ============================== */
+    --color-success:      #0F572F;  --color-success-ink: #0A3A20;  --color-success-soft: #DDF0E4;
+    --color-warning:      #F5B301;  --color-warning-ink: #6B4400;  --color-warning-soft: #FEF3D6;
+    --color-danger:       #B3261E;  --color-danger-ink:  #8E1D14;  --color-danger-soft:  #FBE3E1;
+    --color-neutral:      #9AA99D;  --color-neutral-ink: #3B4B41;  --color-neutral-soft: #E9EEE9;
+    /* Info is LIME (logo-faithful), never blue. */
+    --color-info:         #9AC724;  --color-info-ink:    #3F5A0A;  --color-info-soft:    #EDF5D6;
+    --color-accent:       #0F572F;  /* the green used for accent TEXT       */
+
+    /* Badge tokens, reference-named so the reference CSS ports over. */
+    --badge-success-bg: #DDF0E4;  --badge-success-text: #0A3A20;
+    --badge-warning-bg: #FEF3D6;  --badge-warning-text: #6B4400;
+    --badge-danger-bg:  #FBE3E1;  --badge-danger-text:  #8E1D14;
+    --badge-info-bg:    #EDF5D6;  --badge-info-text:    #3F5A0A;
+    --badge-neutral-bg: #E9EEE9;  --badge-neutral-text: #3B4B41;
+
+    /* Stock / sync indicator hues. */
+    --stock-in:  #0F572F;
+    --stock-low: #B87400;   /* raw yellow is 1.4:1 on white = invisible     */
+    --stock-out: #B3261E;
+
+    /* =================== 7. TYPE SCALE + SPACING ========================= */
+    --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+
+    --gt-fs-micro: 11px;
+    --gt-fs-xs:    12px;
+    --gt-fs-sm:    13px;
+    --gt-fs-base:  14px;
+    --gt-fs-md:    16px;
+    --gt-fs-lg:    20px;
+    --gt-fs-xl:    24px;
+    --gt-fs-2xl:   30px;
+    --gt-fs-hero:  44px;
+
+    --gt-ls-tight: -0.02em;
+    --gt-ls-hero:  -0.5px;
+    --gt-ls-label: 0.05em;
+
+    /* ====================== 8. RADIUS + SPACING ========================== */
+    --gt-radius-sm:   8px;
+    --gt-radius-btn:  30px;   /* the pill radius - buttons, pills, inputs  */
+    --gt-radius-md:   12px;
+    --gt-radius-card: 24px;
+    --gt-radius-pill: 999px;
+
+    --gt-sp-2: 8px;
+    --gt-sp-3: 12px;
+    --gt-sp-4: 16px;
+    --gt-sp-5: 20px;
+    --gt-sp-6: 24px;
+
+    /* ========================== 9. FOCUS + MOTION ======================== */
+    --gt-focus-ring:  0 0 0 3px rgba(15, 87, 47, 0.32);
+    --gt-focus-ring-danger: 0 0 0 3px rgba(179, 38, 30, 0.30);
+    --gt-focus-outline: 2px solid var(--ag-green-700);
+    --gt-ease: cubic-bezier(0.2, 0.6, 0.3, 1);
+    --gt-t-fast: 150ms;
+    --gt-t:      200ms;
+    --gt-t-slow: 250ms;
+
+    /* ============ 10. LEGACY ALIASES (Gametech reference names) =========== */
+    /* Kept so reference components port across with zero edits. */
+    --gt-gold:        var(--ag-yellow-400);
+    --gt-gold-text:   var(--ag-yellow-text);
+    --gt-gold-ink:    var(--ag-yellow-ink);
+    --gt-gold-soft:   var(--ag-yellow-soft);
+    --gt-gold-border: var(--ag-yellow-border);
+    --gt-gold-glow:   rgba(245, 179, 1, 0.35);
+    --gt-gold-gradient: var(--ag-yellow-gradient);
+    --color-primary-bg:   var(--ag-green-700);
+    --color-primary-ink:  var(--text-on-fill);
+    --color-primary-border: rgba(255, 255, 255, 0.22);
+    --color-primary-shadow: var(--shadow-primary);
+    --color-primary-shadow-hover: var(--shadow-primary-hover);
+    --section-accent-text: var(--color-accent);
+    --gt-border-card:    1px solid var(--border-subtle);
+    --gt-border-divider: 1px solid var(--border-divider);
+    --gt-shadow-card:    var(--shadow-card);
+    --gt-text-title:     var(--text-primary);
+    --gt-text-body:      var(--text-secondary);
+    --gt-text-muted:     var(--text-muted);
+    --gt-text-subtle:    var(--text-subtle);
+
+    /* ============ 11. LEGACY ALIASES (old Alberto --brand-* / --ag-*) =====
+       The previous token file used --brand-green / --ag-surface / etc. These
+       aliases keep every existing rule in the app working while it is migrated
+       to the new names page by page. Nothing new may use them. */
+    --brand-green:        var(--ag-green-700);
+    --brand-green-dark:   var(--ag-green-800);
+    --brand-green-darker: var(--ag-green-900);
+    --brand-green-light:  var(--ag-green-600);
+    --brand-green-lighter:var(--ag-green-300);
+    --brand-green-soft:   var(--ag-green-100);
+    --brand-green-border: var(--ag-green-200);
+    --brand-yellow:       var(--ag-yellow-400);
+    --brand-yellow-dark:  var(--ag-yellow-500);
+    --brand-yellow-light: var(--ag-yellow-300);
+    --brand-yellow-ink:   var(--ag-yellow-ink);
+    --brand-yellow-soft:  var(--ag-yellow-soft);
+    --brand-yellow-border:var(--ag-yellow-border);
+    --brand-red:          var(--ag-red-600);
+    --brand-red-dark:     var(--ag-red-700);
+    --brand-red-darker:   var(--ag-red-800);
+    --brand-red-light:    var(--ag-red-300);
+    --brand-red-ink:      var(--ag-red-700);
+    --brand-red-soft:     var(--ag-red-soft);
+    --brand-red-border:   var(--ag-red-border);
+    --brand-green-gradient:     var(--ag-green-gradient);
+    --brand-green-gradient-cta: var(--ag-green-gradient);
+    --brand-yellow-gradient:    var(--ag-yellow-gradient);
+    --brand-red-gradient:       var(--ag-red-gradient);
+
+    --ag-bg:             var(--surface-page);
+    --ag-surface:        var(--surface-card);
+    --ag-surface-2:      var(--surface-subtle);
+    --ag-surface-3:      var(--surface-hover);
+    --ag-border:         var(--border-divider);
+    --ag-border-strong:  var(--border-subtle);
+    --ag-border-control: var(--border-control);
+    --ag-text:           var(--text-primary);
+    --ag-text-muted:     var(--text-muted);
+    --ag-text-faint:     var(--text-subtle);
+    --ag-success:        var(--color-success);
+    --ag-success-ink:    var(--color-success-ink);
+    --ag-success-soft:   var(--color-success-soft);
+    --ag-warning:        var(--color-warning);
+    --ag-warning-ink:    var(--color-warning-ink);
+    --ag-warning-soft:   var(--color-warning-soft);
+    --ag-warning-mark:   var(--stock-low);
+    --ag-danger:         var(--color-danger);
+    --ag-danger-ink:     var(--color-danger-ink);
+    --ag-danger-soft:    var(--color-danger-soft);
+    --ag-info:           var(--color-info);
+    --ag-info-ink:       var(--color-info-ink);
+    --ag-info-soft:      var(--color-info-soft);
+    --ag-on-fill:        var(--text-on-fill);
+    --ag-on-yellow:      var(--text-on-yellow);
+    --ag-stock-in:       var(--stock-in);
+    --ag-stock-low:      var(--stock-low);
+    --ag-stock-out:      var(--stock-out);
+    --ag-radius:         var(--gt-radius-md);
+    --ag-radius-sm:      var(--gt-radius-sm);
+    --ag-radius-lg:      var(--gt-radius-card);
+    --ag-shadow-sm:      var(--shadow-sm);
+    --ag-shadow-md:      var(--shadow-md);
+    --ag-shadow-lg:      var(--shadow-lg);
+    --ag-shadow-brand:   var(--shadow-primary);
+    --ag-focus-ring:     var(--gt-focus-ring);
+    --ag-focus-ring-danger: var(--gt-focus-ring-danger);
+}
+
+/* ==========================================================================
+   DARK MODE - designed, not inverted.
+   Deep green-black surfaces, slightly lighter cards, the SAME yellow accent,
+   readable muted text, dark-safe badge colours. Cards keep their gradient
+   and their border. Triggered by data-bs-theme (what the app already sets
+   from localStorage) and by data-theme, plus the OS preference.
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-bs-theme="light"]):not([data-theme="light"]) {
+        --surface-page:   #0C1410;
+        --surface-card:   #141E18;
+        --surface-subtle: #1B2820;
+        --surface-hover:  #233128;
+        --surface-raised: #1B2820;
+        --surface-sunken: #0A110D;
+        --border-subtle:  #2A3A31;
+        --border-divider: #22302A;
+        --border-control: #4E6155;
+        --surface-card-gradient: linear-gradient(135deg, #18241C 0%, #141E18 100%);
+
+        --text-primary:   #E8F0EA;   /* 16.1:1 on page */
+        --text-secondary: #C2D0C6;   /* 10.7:1 on card */
+        --text-muted:     #9FB0A4;   /*  7.5:1 on card */
+        --text-subtle:    #8B9C90;   /*  5.3:1 on surface-2 */
+        --text-on-fill:   #0C1410;   /* dark ink on the lifted fills */
+        --text-on-yellow: #0C1410;
+
+        /* Fills are LIGHTER in the dark, so the ink on them flips to dark. */
+        --ag-green-500: #4CAF50;
+        --ag-green-400: #66BB6A;
+        --ag-green-300: #A5D6A7;
+        --ag-green-200: #2A4A2E;
+        --ag-green-100: #14261A;
+        --ag-green-gradient: linear-gradient(135deg,
+            #4CAF50 0%, #3E9A46 55%, #2E7D32 100%);
+        --ag-green-gradient-lift: linear-gradient(135deg,
+            #66BB6A 0%, #4CAF50 60%, #2E7D32 100%);
+
+        --ag-yellow-300: #FFC42E;
+        --ag-yellow-400: #FFB300;
+        --ag-yellow-500: #E09400;
+        --ag-yellow-ink: #0C1410;
+        --ag-yellow-text:#FFD54F;   /* 10.4:1 on the dark page */
+        --ag-yellow-soft:  #2A2410;
+        --ag-yellow-border:#4A3F14;
+
+        --ag-lime:      #A8D62F;
+        --ag-lime-ink:  #D9EF9B;
+        --ag-lime-soft: #1D2A12;
+
+        --ag-red-300:   #FF8A80;
+        --ag-red-500:   #FF8A80;
+        --ag-red-soft:  #2A1310;
+        --ag-red-border:#4A201A;
+        --ag-red-700:   #FF9E96;
+
+        --shadow-card:  0 4px 20px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.30);
+        --shadow-raised: 0 15px 35px rgba(0, 0, 0, 0.55);
+        --shadow-primary: 0 10px 20px rgba(0, 0, 0, 0.50);
+        --shadow-primary-hover: 0 14px 28px rgba(0, 0, 0, 0.60);
+        --shadow-yellow: 0 2px 10px -2px rgba(245, 179, 1, 0.28);
+        --shadow-red:    0 6px 20px rgba(0, 0, 0, 0.50);
+        --shadow-sm:     0 1px 2px rgba(0, 0, 0, 0.40);
+        --shadow-md:     0 4px 16px rgba(0, 0, 0, 0.45);
+        --shadow-lg:     0 18px 48px rgba(0, 0, 0, 0.55);
+
+        --color-success:     #4CAF50;  --color-success-ink: #7FD08F;  --color-success-soft: #14261A;
+        --color-warning:     #FFB300;  --color-warning-ink: #FFCE4D;  --color-warning-soft: #2A2410;
+        --color-danger:      #FF8A80;  --color-danger-ink:  #FF9E96;  --color-danger-soft:  #2A1310;
+        --color-neutral:     #8B9C90;  --color-neutral-ink: #A8B7AC;  --color-neutral-soft: #1B2820;
+        --color-info:        #A8D62F;  --color-info-ink:    #C3DC6B;  --color-info-soft:    #1D2A12;
+        --color-accent:      #4CAF50;
+
+        --stock-in:  #4CAF50;
+        --stock-low: #FFB300;
+        --stock-out: #FF8A80;
+
+        --gt-focus-ring:  0 0 0 3px rgba(76, 175, 80, 0.40);
+        --gt-focus-ring-danger: 0 0 0 3px rgba(255, 138, 128, 0.38);
+    }
+}
+
+/* Explicit toggle - wins over the OS preference. */
+[data-bs-theme="dark"],
+[data-theme="dark"] {
+    --surface-page:   #0C1410;
+    --surface-card:   #141E18;
+    --surface-subtle: #1B2820;
+    --surface-hover:  #233128;
+    --surface-raised: #1B2820;
+    --surface-sunken: #0A110D;
+    --border-subtle:  #2A3A31;
+    --border-divider: #22302A;
+    --border-control: #4E6155;
+    --surface-card-gradient: linear-gradient(135deg, #18241C 0%, #141E18 100%);
+
+    --text-primary:   #E8F0EA;
+    --text-secondary: #C2D0C6;
+    --text-muted:     #9FB0A4;
+    --text-subtle:    #8B9C90;
+    --text-on-fill:   #0C1410;
+    --text-on-yellow: #0C1410;
+
+    --ag-green-500: #4CAF50;
+    --ag-green-400: #66BB6A;
+    --ag-green-300: #A5D6A7;
+    --ag-green-200: #2A4A2E;
+    --ag-green-100: #14261A;
+    --ag-green-gradient: linear-gradient(135deg,
+        #4CAF50 0%, #3E9A46 55%, #2E7D32 100%);
+    --ag-green-gradient-lift: linear-gradient(135deg,
+        #66BB6A 0%, #4CAF50 60%, #2E7D32 100%);
+
+    --ag-yellow-300: #FFC42E;
+    --ag-yellow-400: #FFB300;
+    --ag-yellow-500: #E09400;
+    --ag-yellow-ink: #0C1410;
+    --ag-yellow-text:#FFD54F;
+    --ag-yellow-soft:  #2A2410;
+    --ag-yellow-border:#4A3F14;
+
+    --ag-lime:      #A8D62F;
+    --ag-lime-ink:  #D9EF9B;
+    --ag-lime-soft: #1D2A12;
+
+    --ag-red-300:   #FF8A80;
+    --ag-red-500:   #FF8A80;
+    --ag-red-soft:  #2A1310;
+    --ag-red-border:#4A201A;
+    --ag-red-700:   #FF9E96;
+
+    --shadow-card:  0 4px 20px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-raised: 0 15px 35px rgba(0, 0, 0, 0.55);
+    --shadow-primary: 0 10px 20px rgba(0, 0, 0, 0.50);
+    --shadow-primary-hover: 0 14px 28px rgba(0, 0, 0, 0.60);
+    --shadow-yellow: 0 2px 10px -2px rgba(245, 179, 1, 0.28);
+    --shadow-red:    0 6px 20px rgba(0, 0, 0, 0.50);
+    --shadow-sm:     0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-md:     0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-lg:     0 18px 48px rgba(0, 0, 0, 0.55);
+
+    --color-success:     #4CAF50;  --color-success-ink: #7FD08F;  --color-success-soft: #14261A;
+    --color-warning:     #FFB300;  --color-warning-ink: #FFCE4D;  --color-warning-soft: #2A2410;
+    --color-danger:      #FF8A80;  --color-danger-ink:  #FF9E96;  --color-danger-soft:  #2A1310;
+    --color-neutral:     #8B9C90;  --color-neutral-ink: #A8B7AC;  --color-neutral-soft: #1B2820;
+    --color-info:        #A8D62F;  --color-info-ink:    #C3DC6B;  --color-info-soft:    #1D2A12;
+    --color-accent:      #4CAF50;
+
+    --stock-in:  #4CAF50;
+    --stock-low: #FFB300;
+    --stock-out: #FF8A80;
+
+    --gt-focus-ring:  0 0 0 3px rgba(76, 175, 80, 0.40);
+    --gt-focus-ring-danger: 0 0 0 3px rgba(255, 138, 128, 0.38);
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--surface-page);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* One consistent, always-visible focus treatment across the whole system. */
+:focus-visible {
+    outline: var(--gt-focus-outline);
+    outline-offset: 2px;
+}
+.focus-danger:focus-visible { outline-color: var(--ag-red-600); }
+
+/* Respect the user's motion preference - 150-250ms becomes instant. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

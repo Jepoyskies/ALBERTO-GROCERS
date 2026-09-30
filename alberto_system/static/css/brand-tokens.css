@@ -1,0 +1,19 @@
+/* ============================================================================
+   ALBERTO GROCERS - DEPRECATED SHIM
+   ----------------------------------------------------------------------------
+   This file used to be the brand palette. It no longer is.
+
+   THE PALETTE NOW LIVES IN:
+       static/css/ag-tokens.css       - every colour, radius, shadow, token
+       static/css/ag-components.css   - the shared component library
+
+   The green and yellow in the old version were NOT taken from the AG logo.
+   The real logo green is #0F572F and the real logo yellow is a lime,
+   #9AC724. ag-tokens.css carries the extracted values and keeps the old
+   --brand-* / --ag-* names as aliases, so every rule already written in the
+   app keeps working while each page is migrated to the new names.
+
+   New code must load ag-tokens.css + ag-components.css directly. This file
+   stays only so a stale reference cannot 404 mid-migration.
+   ========================================================================== */
+@import url("ag-tokens.css");

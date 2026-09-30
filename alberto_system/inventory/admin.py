@@ -19,7 +19,7 @@ from core.cache_utils import clear_dashboard_cache
 
 from .models import (
     Category, Customer, CustomerPayment, Expense, ExpenseCategory,
-    HydraulicSow, POSSale, PriceOverrideLog, CancellationReason, Product, PurchaseOrder,
+    POSSale, PriceOverrideLog, CancellationReason, Product, PurchaseOrder,
     PurchaseOrderItem, StockTransaction, Supplier
 )
 
@@ -182,18 +182,6 @@ class CustomerPaymentInline(admin.TabularInline):
         return False
 
 
-class HydraulicSowInline(admin.TabularInline):
-    """Inline view for viewing scopes of work tied to a customer."""
-    model = HydraulicSow
-    extra = 0
-    fields = ('date_created', 'application', 'hose_type', 'length')
-    readonly_fields = fields
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-
 class CustomerSaleInline(admin.TabularInline):
     """Inline view for viewing POS Sales within the Customer admin."""
     model = POSSale
@@ -213,12 +201,12 @@ class CustomerAdmin(admin.ModelAdmin):
     """
     Admin configuration for the Customer model.
     Displays customer information, allows searching, and shows current balance.
-    Includes inlines for Customer Payments, Hydraulic Sows, and POS Sales.
+    Includes inlines for Customer Payments and POS Sales.
     """
     list_display = ('name', 'customer_id', 'email', 'phone', 'current_balance_display')
     search_fields = ('name', 'customer_id', 'email', 'phone', 'tax_id')
     exclude = ('credit_limit',)
-    inlines =[CustomerPaymentInline, CustomerSaleInline, HydraulicSowInline]
+    inlines =[CustomerPaymentInline, CustomerSaleInline]
     readonly_fields = ('created_at', 'updated_at')
     list_per_page = 25
 
@@ -267,19 +255,6 @@ class CustomerPaymentAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         clear_dashboard_cache()
-
-
-@admin.register(HydraulicSow)
-class HydraulicSowAdmin(admin.ModelAdmin):
-    """
-    Admin configuration for the HydraulicSow model.
-    Manages display, filtering, searching, and autocomplete fields for hydraulic sow records.
-    """
-    list_display = ('sow_id', 'customer', 'date_created', 'application', 'hose_type', 'cost')
-    list_filter = ('date_created', 'hose_type')
-    search_fields = ('sow_id', 'customer__name', 'application', 'notes')
-    autocomplete_fields = ('customer', 'created_by')
-    date_hierarchy = 'date_created'
 
 
 # --- Point of Sale ---

@@ -17,15 +17,14 @@ env/
 # Django Generated Files
 alberto_system/staticfiles/
 alberto_system/media/
-alberto_system/db.sqlite3
-alberto_system/db.sqlite3-journal
-alberto_system/staticfiles/
-alberto_system/media/
+# Local database + backups (local-only system: db.sqlite3 is the ONLY copy of the
+# shop's data, so never commit it. Use .\scripts\backup.ps1 instead.)
 alberto_system/db.sqlite3
 alberto_system/db.sqlite3-journal
 *.sqlite3
 *.sqlite3-journal
 *.local.txt
+backups/
 
 # Logs
 *.log

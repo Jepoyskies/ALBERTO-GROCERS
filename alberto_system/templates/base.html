@@ -1,12 +1,26 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
+    <script>
+        /* Apply the saved theme BEFORE first paint. Without this the page would
+           render light, then flip to dark once the toggle script runs at the
+           bottom of the body - a visible flash on every navigation. */
+        (function () {
+            try {
+                var stored = localStorage.getItem('albertoTheme');
+                if (stored !== 'light' && stored !== 'dark') {
+                    stored = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-bs-theme', stored);
+            } catch (e) { /* private mode / storage disabled - fall back to light */ }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="Alberto Grocers - Inventory and POS Dashboard">
     <meta name="author" content="Alberto Grocers">
-    <meta name="theme-color" content="#2d8653">
+    <meta name="theme-color" content="#0F572F">
     <title>{% block title %}Alberto Inventory POS{% endblock %}</title>
     
     <!-- Open Graph / Social Media Meta Tags -->
@@ -17,10 +31,10 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
 
-    <!-- Google Fonts: Inter -->
+    <!-- Google Fonts: Poppins (the one brand typeface) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Bootstrap CSS (CDN) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,317 +45,663 @@
     <!-- TomSelect CSS (For Searchable Dropdowns) -->
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 
+    <!-- ALBERTO GROCERS THEME: tokens first, then the shared component
+         library. Single source of truth for every colour, radius and shadow.
+         Loaded BEFORE the legacy inline palette below so the theme wins. -->
+    <link rel="stylesheet" href="{% static 'css/ag-tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ag-components.css' %}">
+
     <!-- HTMX (CDN) -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
     <style>
-        /* --- BRAND PALETTE --- */
+        /* --- BRAND PALETTE (Gametech Theme) --- */
         :root {
-            --brand-primary: #2799a5;       /* Ocean Teal */
-            --brand-primary-dark: #1f7a85;  
-            
-            /* Functional Colors */
-            --brand-success: #27a562;       
-            --brand-danger: #c0392b;        
-            --brand-warning: #f39c12;       
-            
-            /* Backgrounds */
-            --brand-dark: #2c3e50;          
-            --brand-black: #1a1a1a;         
-            
-            /* BOOTSTRAP OVERRIDES */
-            --bs-primary: #2799a5;
-            --bs-primary-rgb: 39, 153, 165;
-            --bs-success: #27a562;
-            --bs-danger: #c0392b;
-            --bs-warning: #f39c12;
-            --bs-body-bg: #f4f6f9;
+            /* The Gametech blues are gone. Every brand value below resolves
+               to ag-tokens.css, which carries the colours EXTRACTED from the
+               AG logo: green #0F572F, yellow #F5B301, proposed red #B3261E.
+               This block only re-points the legacy names the content pages
+               already use, so they follow the new brand with no rewrite. */
+            --brand-primary: var(--ag-green-700);
+            --brand-primary-dark: var(--ag-green-800);
+            --brand-accent: var(--ag-yellow-400);
+            --brand-success: var(--ag-green-600);
+            --brand-danger: var(--ag-red-600);
+            --brand-warning: var(--ag-yellow-500);
+
+            --sidebar-width: 255px;
+            --topbar-height: 68px;
+            --bg-page: var(--surface-page);
+
+            --bs-primary: var(--ag-green-700);
+            --bs-primary-rgb: 15, 87, 47;
+            --bs-body-bg: var(--surface-page);
+
+            /* --- SEMANTIC SURFACE TOKENS ---
+               Every rule below uses these instead of raw hex, so dark mode is a
+               single override block rather than a rewrite of each rule. */
+            --surface:        var(--surface-card);
+            --surface-2:      var(--surface-subtle);
+            --surface-3:      var(--surface-hover);
+            --hover-bg:       var(--surface-hover);
+            --table-head-bg:  var(--surface-subtle);
+            --border:         var(--border-divider);
+            --border-soft:    var(--border-divider);
+            --border-strong:  var(--border-subtle);
+            --row-border:     var(--border-divider);
+            --submenu-hover:  var(--surface-hover);
+            --text-main:      var(--text-primary);
+            --text-muted:     var(--text-muted);
+            --text-faint:     var(--text-subtle);
+            --card-shadow:    var(--shadow-card);
+            --active-bg:      var(--ag-yellow-soft);  /* active nav pill */
+            --active-text:    var(--ag-yellow-text);
         }
 
-        /* --- TOAST STYLING --- */
-        .toast-container {
-            padding: 1rem !important;
+        /* --- DARK THEME ---
+           Bootstrap 5.3 ships its own dark palette and switches on this
+           attribute, so components (dropdowns, btn-light, form controls,
+           .text-muted) already adapt. These tokens cover OUR custom chrome. */
+        [data-bs-theme="dark"] {
+            /* ag-tokens.css already redefines every one of these under
+               [data-bs-theme="dark"] with the deep green-black set, so this
+               block only has to re-point the legacy names. */
+            --bs-body-bg: var(--surface-page);
+
+            --surface:        var(--surface-card);
+            --surface-2:      var(--surface-subtle);
+            --surface-3:      var(--surface-hover);
+            --hover-bg:       var(--surface-hover);
+            --table-head-bg:  var(--surface-subtle);
+            --border:         var(--border-divider);
+            --border-soft:    var(--border-divider);
+            --border-strong:  var(--border-subtle);
+            --row-border:     var(--border-divider);
+            --submenu-hover:  var(--surface-hover);
+            --text-main:      var(--text-primary);
+            --text-muted:     var(--text-muted);
+            --text-faint:     var(--text-subtle);
+            --card-shadow:    var(--shadow-card);
+            --active-bg:      var(--ag-yellow-soft);
+            --active-text:    var(--ag-yellow-text);
+
+            --bg-page: var(--surface-page);
         }
+
+        /* Bootstrap utilities that are fixed colours and do NOT follow
+           data-bs-theme on their own. */
+        [data-bs-theme="dark"] .text-dark { color: var(--text-main) !important; }
+        [data-bs-theme="dark"] .bg-white  { background-color: var(--surface) !important; }
+        [data-bs-theme="dark"] .border-top,
+        [data-bs-theme="dark"] .border-bottom { border-color: var(--border) !important; }
+        [data-bs-theme="dark"] .card { background-color: var(--surface); }
+        [data-bs-theme="dark"] .modal-content,
+        [data-bs-theme="dark"] .offcanvas { background-color: var(--surface); }
+        [data-bs-theme="dark"] .toast { background-color: var(--surface-2) !important; color: var(--text-main) !important; }
+
+        /* --- TOAST STYLING --- */
+        .toast-container { padding: 1rem !important; }
         .toast {
-            border-radius: 10px !important;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.15) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12) !important;
             border-left: 5px solid transparent !important;
             min-width: 320px;
         }
-        .toast.bg-success { border-left-color: #198754 !important; }
-        .toast.bg-danger { border-left-color: #dc3545 !important; }
-        .toast.bg-warning { border-left-color: #ffc107 !important; background-color: #fffaf0 !important; color: #856404 !important; }
-        .toast.bg-warning .btn-close { filter: none !important; }
+        .toast.bg-success { border-left-color: var(--ag-green-600) !important; }
+        .toast.bg-danger { border-left-color: var(--ag-red-600) !important; }
+        .toast.bg-warning { border-left-color: var(--ag-yellow-500) !important; }
         
-        /* Typography */
+        /* Typography & Layout */
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
-            color: #343a40;
-            display: flex;
-            flex-direction: column;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
         }
-        .table td, .badge, .text-monospace {
-            font-feature-settings: "tnum";
-            font-variant-numeric: tabular-nums;
+
+        /* --- SIDEBAR STYLING --- */
+        .app-sidebar {
+            width: var(--sidebar-width);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 1040;
+            transition: all 0.25s ease-in-out;
         }
 
-        /* 2. PROFESSIONAL TABLES */
-        .table { font-size: 0.9rem; margin-bottom: 0; }
-        .table thead th {
-            background-color: #f1f3f5;
-            color: #495057;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid var(--brand-primary); 
-            padding: 12px 10px;
+        .sidebar-brand {
+            height: var(--topbar-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 0 16px 0 20px;
+            border-bottom: 1px solid var(--border-soft);
+            text-decoration: none;
+            flex: 0 0 auto;
         }
-        .table tbody td {
-            vertical-align: middle;
-            padding: 8px 10px;
-            border-bottom: 1px solid #e9ecef;
+
+        .sidebar-brand-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            min-width: 0;
         }
-        .table-hover tbody tr:hover {
-            background-color: rgba(39, 153, 165, 0.05); 
-        }
-        .card {
+
+        /* Close button (slides the sidebar back to the side) */
+        .sidebar-close-btn {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
             border: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-            border-radius: 8px;
-            overflow: hidden;
+            border-radius: 50%;
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease;
         }
 
-        /* 3. NAVBAR */
-        .navbar-dark.bg-dark {
-            background-color: var(--brand-black) !important;
-            border-bottom: 4px solid var(--brand-primary);
-            padding-top: 0.8rem;
-            padding-bottom: 0.8rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        .sidebar-close-btn:hover {
+            background: var(--surface-3);
+            color: var(--text-main);
         }
-        .navbar-nav .nav-link {
-            color: #e0e0e0 !important;
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 12px;
+        }
+
+        .sidebar-nav-item {
+            margin-bottom: 4px;
+        }
+
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            color: var(--text-muted);
             font-weight: 500;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            transition: color 0.3s ease;
-        }
-        .navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
-            color: var(--brand-primary) !important;
+            font-size: 0.88rem;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.18s ease;
         }
 
-        /* 4. DROPDOWNS */
-        .dropdown-menu {
-            background-color: var(--brand-dark);
-            border-top: 3px solid var(--brand-primary);
-            margin-top: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        .sidebar-nav-link:hover {
+            background: var(--hover-bg);
+            color: var(--text-main);
         }
-        .dropdown-item { color: #ecf0f1; padding: 8px 20px; font-size: 0.9rem; }
-        .dropdown-item:hover { background-color: #34495e; color: #fff; border-left: 3px solid var(--brand-primary); }
 
-        /* 5. BUTTONS */
-        .btn-primary {
-            background-color: var(--brand-primary);
-            border-color: var(--brand-primary);
-            color: #fff;
+        .sidebar-nav-link.active {
+            background: var(--active-bg); /* Gametech warm soft amber pill */
+            color: var(--active-text);     /* Gametech warm amber text */
+            font-weight: 700;
+        }
+
+        .sidebar-nav-link.active i.nav-icon {
+            color: var(--ag-yellow-500);
+        }
+
+        .sidebar-nav-link i.nav-icon {
+            width: 22px;
+            font-size: 1rem;
+            margin-right: 10px;
+            color: var(--text-faint);
+        }
+
+        .sidebar-submenu {
+            list-style: none;
+            padding-left: 32px;
+            margin: 4px 0 8px 0;
+        }
+
+        .sidebar-submenu a {
+            display: block;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-submenu a:hover, .sidebar-submenu a.active {
+            color: var(--ag-green-700);
+            background: var(--submenu-hover);
             font-weight: 600;
         }
-        .btn-primary:hover {
-            background-color: var(--brand-primary-dark) !important;
-            border-color: var(--brand-primary-dark) !important;
-        }
-        
-        .bg-warning { background-color: var(--brand-warning) !important; color: #fff !important; }
-        .text-warning { color: var(--brand-warning) !important; }
-        
-        a { color: var(--brand-dark); text-decoration: none; }
-        a:hover { color: var(--brand-primary); }
 
-        /* 6. PAGINATION OVERRIDES */
-        .pagination {
-            --bs-pagination-active-bg: var(--brand-primary);
-            --bs-pagination-active-border-color: var(--brand-primary);
-            --bs-pagination-color: var(--brand-primary);
-            --bs-pagination-hover-color: var(--brand-primary-dark);
-            --bs-pagination-focus-color: var(--brand-primary-dark);
-        }
-        .page-link { color: var(--brand-primary); font-weight: 500; }
-        .page-item.active .page-link {
-            background-color: var(--brand-primary) !important;
-            border-color: var(--brand-primary) !important;
-            color: #fff !important;
-        }
-        
-        /* 7. TOM SELECT FIXES */
-        .ts-control {
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.375rem;
-            border-color: #dee2e6;
-        }
-        .ts-wrapper.focus .ts-control {
-            border-color: var(--brand-primary);
-            box-shadow: 0 0 0 0.25rem rgba(39, 153, 165, 0.25);
-        }
-        .ts-dropdown {
-            z-index: 1050 !important;
+        [data-bs-theme="dark"] .sidebar-submenu a:hover,
+        [data-bs-theme="dark"] .sidebar-submenu a.active {
+            color: var(--ag-green-300);
         }
 
-        /* --- MOBILE RESPONSIVENESS --- */
-        @media (max-width: 767.98px) {
-            .navbar-brand img { height: 30px; }
-            .container-fluid { padding-left: 1rem !important; padding-right: 1rem !important; }
-            body { font-size: 0.85rem; }
-            .h1, h1 { font-size: 1.5rem; }
-            .h2, h2 { font-size: 1.25rem; }
-            .table-responsive {
-                border: 0;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
+        /* --- TOPBAR STYLING --- */
+        .app-topbar {
+            height: var(--topbar-height);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+
+        /* --- MAIN CONTENT AREA --- */
+        .app-main {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-page);
+            transition: margin-left 0.25s ease-in-out;
+        }
+
+        .app-content {
+            flex: 1;
+            padding: 24px 28px 40px 28px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 14px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .table thead th {
+            background-color: var(--table-head-bg);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-strong);
+            padding: 12px 14px;
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--row-border);
+        }
+
+        /* --- THEME TOGGLE PILL --- */
+        #themeToggleBtn { min-width: 92px; justify-content: center; }
+        #themeToggleBtn .theme-icon-sun,
+        #themeToggleBtn .theme-icon-moon { display: none; }
+        [data-bs-theme="light"] #themeToggleBtn .theme-icon-sun  { display: inline-block; }
+        [data-bs-theme="dark"]  #themeToggleBtn .theme-icon-moon { display: inline-block; }
+
+        /* --- NOTIFICATION BELL --- */
+        #notifBellBtn { transition: background 0.18s ease, color 0.18s ease; }
+        #notifBellBtn:hover { background: var(--surface-3); color: var(--text-main) !important; }
+        #notifBadge[hidden] { display: none !important; }
+        .notif-dropdown { width: 340px; padding: 0; border-radius: 14px; overflow: hidden; }
+        .notif-dropdown .notif-head {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .notif-dropdown .notif-list { max-height: 340px; overflow-y: auto; }
+        .notif-dropdown .notif-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border-soft);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: background 0.15s ease;
+        }
+        .notif-dropdown .notif-item:last-child { border-bottom: none; }
+        .notif-dropdown .notif-item:hover { background: var(--hover-bg); color: var(--text-main); }
+        .notif-dropdown .notif-icon {
+            flex: 0 0 auto;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--ag-yellow-soft);
+            color: var(--ag-yellow-text);
+        }
+        .notif-dropdown .notif-body { min-width: 0; flex: 1; }
+        .notif-dropdown .notif-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .notif-dropdown .notif-sub { font-size: 0.74rem; color: var(--text-muted); }
+        .notif-dropdown .notif-empty { padding: 26px 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+        .notif-dropdown .notif-foot {
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        .notif-dropdown .notif-foot a { display: block; padding: 10px; font-size: 0.8rem; text-decoration: none; }
+
+        /* Desktop: sidebar slid out to the side (toggle / close button) */
+        @media (min-width: 992px) {
+            body.sidebar-collapsed .app-sidebar {
+                left: calc(-1 * var(--sidebar-width));
+            }
+            body.sidebar-collapsed .app-main {
+                margin-left: 0;
+            }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 991.98px) {
+            .app-sidebar {
+                left: -270px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+            }
+            .app-sidebar.show {
+                left: 0;
+            }
+            .app-main {
+                margin-left: 0;
+            }
+            .sidebar-backdrop {
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(15, 23, 42, 0.4);
+                backdrop-filter: blur(2px);
+                z-index: 1035;
+                display: none;
+            }
+            .sidebar-backdrop.show {
+                display: block;
+            }
+            .app-content {
+                padding: 16px 14px;
             }
         }
     </style>
 </head>
-<body class="d-flex flex-column h-100 bg-body-tertiary">
+<body class="{% block body_class %}{% endblock %}">
     
-    <header class="sticky-top">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="Main Navigation">
-            <div class="container-fluid px-4">
-                <a class="navbar-brand me-4 d-flex align-items-center" href="{% url 'home' %}" aria-label="Navigate to Home Dashboard">
-                    <img src="{% static 'images/logo.png' %}" alt="Alberto Grocers Logo" height="40" class="me-2">
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle primary navigation menu">
-                    <span class="navbar-toggler-icon"></span>
+    <!-- Mobile Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- 1. LEFT SIDEBAR (Gametech layout) -->
+    <aside class="app-sidebar" id="appSidebar">
+        <!-- Brand Header -->
+        <div class="sidebar-brand">
+            <a href="{% url 'dashboard' %}" class="sidebar-brand-link">
+                <img src="{% static 'images/logo_round.png' %}" alt="Alberto Grocers" height="42" width="42" class="me-2 rounded-circle shadow-sm">
+                <div class="lh-sm">
+                    <div class="fw-bold text-dark fs-6 text-truncate" style="letter-spacing: -0.3px;">Alberto Grocers</div>
+                    <small class="text-muted text-uppercase fw-semibold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Inventory &amp; POS</small>
+                </div>
+            </a>
+            <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Menu Navigation -->
+        <nav class="sidebar-menu">
+            <ul class="list-unstyled mb-0">
+                <!-- Dashboard (Active) -->
+                <li class="sidebar-nav-item">
+                    <a href="{% url 'dashboard' %}" class="sidebar-nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
+                        <div>
+                            <i class="fas fa-th-large nav-icon"></i>
+                            <span>Dashboard</span>
+                        </div>
+                    </a>
+                </li>
+
+                <!-- POS -->
+                {% if perms.inventory.add_possale or perms.inventory.view_possale %}
+                <li class="sidebar-nav-item">
+                    <a class="sidebar-nav-link" data-bs-toggle="collapse" href="#posSubmenu" role="button" aria-expanded="false">
+                        <div>
+                            <i class="fas fa-cash-register nav-icon"></i>
+                            <span>POS</span>
+                        </div>
+                        <i class="fas fa-chevron-down small" style="font-size: 0.7rem; color: var(--text-subtle);"></i>
+                    </a>
+                    <div class="collapse {% if '/pos/' in request.path %}show{% endif %}" id="posSubmenu">
+                        <ul class="sidebar-submenu">
+                            <li><a href="{% url 'inventory:pos_dashboard' %}" class="pos-submenu-link">POS Terminal</a></li>
+                            <li><a href="{% url 'inventory:pos_history' %}" class="pos-submenu-link">Sales History</a></li>
+                            <li><a href="{% url 'inventory:refund_portal' %}" class="pos-submenu-link">Refund Portal</a></li>
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- Inventory & Products -->
+                {% if perms.inventory.view_product %}
+                <li class="sidebar-nav-item">
+                    <a class="sidebar-nav-link" data-bs-toggle="collapse" href="#inventorySubmenu" role="button" aria-expanded="false">
+                        <div>
+                            <i class="fas fa-boxes nav-icon"></i>
+                            <span>Inventory</span>
+                        </div>
+                        <i class="fas fa-chevron-down small" style="font-size: 0.7rem; color: var(--text-subtle);"></i>
+                    </a>
+                    <div class="collapse {% if '/inventory/' in request.path and '/pos/' not in request.path %}show{% endif %}" id="inventorySubmenu">
+                        <ul class="sidebar-submenu">
+                            <li><a href="{% url 'inventory:product_list' %}">Product Catalog</a></li>
+                            {% if perms.inventory.view_stocktransaction %}
+                            <li><a href="{% url 'inventory:transaction_list' %}">Transaction Logs</a></li>
+                            {% endif %}
+                            {% if perms.inventory.can_view_history %}
+                            <li><a href="{% url 'inventory:product_history_list' %}">Audit History</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- Customers & Accounts -->
+                {% if perms.inventory.view_customer %}
+                <li class="sidebar-nav-item">
+                    <a href="{% url 'inventory:customer_list' %}" class="sidebar-nav-link {% if '/customers/' in request.path %}active{% endif %}">
+                        <div>
+                            <i class="fas fa-users nav-icon"></i>
+                            <span>Customers</span>
+                        </div>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Analytics & Reports -->
+                {% if perms.inventory.can_view_reports or perms.inventory.view_expense %}
+                <li class="sidebar-nav-item">
+                    <a class="sidebar-nav-link" data-bs-toggle="collapse" href="#reportsSubmenu" role="button" aria-expanded="false">
+                        <div>
+                            <i class="fas fa-chart-line nav-icon"></i>
+                            <span>Reports &amp; Data</span>
+                        </div>
+                        <i class="fas fa-chevron-down small" style="font-size: 0.7rem; color: var(--text-subtle);"></i>
+                    </a>
+                    <div class="collapse {% if '/analytics/' in request.path or '/reporting/' in request.path or '/expenses/' in request.path %}show{% endif %}" id="reportsSubmenu">
+                        <ul class="sidebar-submenu">
+                            {% if perms.inventory.can_view_reports %}
+                            <li><a href="{% url 'inventory:analytics' %}">Analytics</a></li>
+                            <li><a href="{% url 'inventory:reporting' %}">Reports Hub</a></li>
+                            {% endif %}
+                            {% if perms.inventory.view_expense %}
+                            <li><a href="{% url 'inventory:expense_list' %}">Expense Tracker</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </li>
+                {% endif %}
+
+                <!-- Administration -->
+                {% if user.is_staff %}
+                <li class="sidebar-nav-item">
+                    <a href="{% url 'admin:index' %}" class="sidebar-nav-link" target="_blank">
+                        <div>
+                            <i class="fas fa-cog nav-icon"></i>
+                            <span>Administration</span>
+                        </div>
+                        <i class="fas fa-external-link-alt small" style="font-size: 0.7rem; color: var(--text-subtle);"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="p-3 border-top bg-white">
+            {% if user.is_authenticated %}
+            <form action="{% url 'logout' %}" method="post" class="mb-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-light w-100 text-start text-danger fw-semibold d-flex align-items-center py-2 px-3" style="border-radius: 10px; font-size: 0.88rem;">
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
                 </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto" role="menubar">
-                        <li class="nav-item" role="none">
-                            <a class="nav-link" href="{% url 'home' %}" role="menuitem"><i class="fas fa-tachometer-alt me-1" aria-hidden="true"></i> Dashboard</a>
-                        </li>
-                        
-                        {% if perms.inventory.view_product %}
-                        <li class="nav-item dropdown" role="none">
-                            <a class="nav-link dropdown-toggle" href="#" role="menuitem" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-boxes me-1" aria-hidden="true"></i> Inventory</a>
-                            <ul class="dropdown-menu" role="menu">
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:product_list' %}" role="menuitem">Product List</a></li>
-                                {% if perms.inventory.view_stocktransaction %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:transaction_list' %}" role="menuitem">Transaction Logs</a></li>
-                                {% endif %}
-                                {% if perms.inventory.can_view_history %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:product_history_list' %}" role="menuitem">Audit History</a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                        {% endif %}
-                        
-                        {% if perms.inventory.view_purchaseorder or perms.inventory.view_supplier %}
-                        <li class="nav-item dropdown" role="none">
-                            <a class="nav-link dropdown-toggle" href="#" role="menuitem" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-truck me-1" aria-hidden="true"></i> Procurement</a>
-                            <ul class="dropdown-menu" role="menu">
-                                {% if perms.inventory.view_purchaseorder %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:purchaseorder_list' %}" role="menuitem">Purchase Orders</a></li>
-                                {% endif %}
-                                {% if perms.inventory.view_supplier %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:supplier_list' %}" role="menuitem">Suppliers</a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                        {% endif %}
-                        
-                        {% if perms.inventory.view_customer %}
-                        <li class="nav-item" role="none">
-                            <a class="nav-link" href="{% url 'inventory:customer_list' %}" role="menuitem">
-                                <i class="fas fa-users me-1" aria-hidden="true"></i> Customers
+            </form>
+            {% endif %}
+            <div class="text-center text-muted" style="font-size: 0.72rem;">
+                © {% now "Y" %} Alberto Grocers
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN APP CONTAINER -->
+    <div class="app-main">
+        <!-- Top Navigation Bar (Gametech Style) -->
+        <header class="app-topbar">
+            <!-- Left: Toggle Sidebar -->
+            <div class="d-flex align-items-center">
+                <button type="button" class="btn btn-light border-0 p-2 me-3 rounded-circle" id="sidebarToggleBtn" aria-label="Toggle navigation">
+                    <i class="fas fa-bars fa-lg text-secondary"></i>
+                </button>
+            </div>
+
+            <!-- Right: Action Buttons (matching screenshot) -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- Theme toggle: shows the CURRENT mode, switches on click -->
+                <button type="button" id="themeToggleBtn"
+                        class="btn btn-sm btn-light border rounded-pill px-3 py-1 fw-semibold text-secondary shadow-sm d-none d-sm-inline-flex align-items-center"
+                        style="font-size: 0.8rem;" title="Switch theme" aria-label="Switch colour theme">
+                    <i class="fas fa-sun text-warning me-1 theme-icon-sun" aria-hidden="true"></i>
+                    <i class="fas fa-moon theme-icon-moon" aria-hidden="true"></i>
+                    <span id="themeToggleLabel">LIGHT</span>
+                </button>
+
+                <!-- Notifications: low-stock alerts from the notifications context processor -->
+                {% if user.is_authenticated %}
+                <div class="dropdown me-2">
+                    <button type="button" id="notifBellBtn"
+                            class="btn btn-sm btn-light border-0 rounded-circle text-secondary p-2 position-relative"
+                            data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications" title="Notifications">
+                        <i class="far fa-bell fa-lg" aria-hidden="true"></i>
+                        <span id="notifBadge"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size: 0.65rem;" {% if not notif_count %}hidden{% endif %}>{% if notif_count %}{{ notif_count }}{% if notif_count > 99 %}+{% endif %}{% endif %}</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notif-dropdown shadow-sm border-0 mt-2" aria-labelledby="notifBellBtn">
+                        <div class="notif-head d-flex justify-content-between align-items-center">
+                            <span>Notifications</span>
+                            {% if notif_count %}
+                            <span class="badge rounded-pill bg-danger">{{ notif_count }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="notif-list">
+                            {% for item in notif_items %}
+                            <a class="notif-item" href="{% url 'inventory:product_list' %}">
+                                <span class="notif-icon"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i></span>
+                                <span class="notif-body">
+                                    <span class="notif-title d-block">{{ item.name }}</span>
+                                    <span class="notif-sub">{{ item.quantity }} in stock &middot; reorder at {{ item.reorder_level }}</span>
+                                </span>
                             </a>
-                        </li>
-                        {% endif %}
-                        
-                        {% if perms.inventory.can_view_reports or perms.inventory.view_expense %}
-                        <li class="nav-item dropdown" role="none">
-                            <a class="nav-link dropdown-toggle" href="#" role="menuitem" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-chart-pie me-1" aria-hidden="true"></i> Insights</a>
-                            <ul class="dropdown-menu" role="menu">
-                                {% if perms.inventory.can_view_reports %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:analytics' %}" role="menuitem">Analytics</a></li>
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:reporting' %}" role="menuitem">Reports</a></li>
+                            {% empty %}
+                            <div class="notif-empty">
+                                <i class="fas fa-circle-check mb-2 d-block" style="font-size: 1.4rem;" aria-hidden="true"></i>
+                                {% if notif_count %}
+                                    No items to show.
+                                {% else %}
+                                    Stock levels look healthy.
                                 {% endif %}
-                                {% if perms.inventory.view_expense %}
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:expense_list' %}" role="menuitem">Expenses</a></li>
-                                {% endif %}
-                            </ul>
+                            </div>
+                            {% endfor %}
+                            {% if notif_extra %}
+                            <div class="notif-empty py-2" style="font-size: 0.78rem;">+{{ notif_extra }} more&hellip;</div>
+                            {% endif %}
+                        </div>
+                        <div class="notif-foot">
+                            <a href="{% url 'inventory:product_list' %}">View all products</a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- User Profile Dropdown -->
+                {% if user.is_authenticated %}
+                <div class="dropdown">
+                    <button class="btn btn-link p-0 text-decoration-none d-flex align-items-center" id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 38px; height: 38px; background: var(--ag-green-gradient); font-size: 0.95rem;">
+                            {{ user.username|slice:":1"|upper }}
+                        </div>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" aria-labelledby="userMenuBtn" style="border-radius: 12px; min-width: 200px;">
+                        <li class="px-3 py-2 border-bottom">
+                            <div class="fw-bold text-dark">{{ user.username }}</div>
+                            <small class="text-muted">{{ user.email|default:"Staff Member" }}</small>
                         </li>
+                        {% if user.is_staff %}
+                        <li><a class="dropdown-item py-2" href="{% url 'admin:index' %}"><i class="fas fa-cog me-2 text-secondary"></i> Admin Panel</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         {% endif %}
-                        
-                        {% if perms.inventory.add_possale or perms.inventory.view_possale %}
-                        <li class="nav-item dropdown" role="none">
-                            <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="menuitem" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-cash-register me-1" aria-hidden="true"></i> POS
-                            </a>
-                            <ul class="dropdown-menu" role="menu">
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:pos_dashboard' %}" role="menuitem">Open Terminal</a></li>
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:refund_portal' %}" role="menuitem">Refund Portal</a></li>
-                                <li role="none"><a class="dropdown-item" href="{% url 'inventory:pos_history' %}" role="menuitem">Sales History</a></li>
-                            </ul>
+                        <li>
+                            <form action="{% url 'logout' %}" method="post" class="px-2 py-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill">Logout</button>
+                            </form>
                         </li>
-                        {% endif %}
-                        <li class="nav-item" role="none">
-                            <a class="nav-link text-info" href="{% url 'inventory:feedback' %}" role="menuitem" title="Provide Feedback">
-                                <i class="fas fa-comments" aria-hidden="true"></i>
-                            </a>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav" role="menubar">
-                        {% if user.is_authenticated %}
-                            <li class="nav-item dropdown" role="none">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="menuitem" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-user-circle me-1" aria-hidden="true"></i> {{ user.username }}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" role="menu">
-                                    {% if user.is_staff %}
-                                        <li role="none"><a class="dropdown-item" href="{% url 'admin:index' %}" role="menuitem">Admin Panel</a></li>
-                                        <li role="none"><hr class="dropdown-divider"></li>
-                                    {% endif %}
-                                    <li role="none">
-                                        <form action="{% url 'logout' %}" method="post" class="px-2">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-danger w-100" role="menuitem" aria-label="Log out of the system">Logout</button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </li>
-                        {% else %}
-                            <li class="nav-item" role="none"><a class="nav-link" href="{% url 'login' %}" role="menuitem">Login</a></li>
-                        {% endif %}
                     </ul>
                 </div>
+                {% endif %}
             </div>
-        </nav>
-    </header>
-    
-    <div class="container-fluid px-4 mt-3">
-        <!-- Breadcrumb Container -->
-        <nav aria-label="breadcrumb" id="breadcrumb-nav">
-            <ol class="breadcrumb mb-0 small text-uppercase fw-bold">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-decoration-none text-primary">Dashboard</a></li>
-                {% block breadcrumb %}{% endblock %}
-            </ol>
-        </nav>
-    </div>
-    
-    <div class="container-fluid px-4 mt-3 mb-5 flex-shrink-0">
-        <main id="main-content" role="main" aria-label="Main Content Area">
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-content" id="main-content">
+            {% block breadcrumb_wrapper %}
+            {% if request.path != '/' %}
+            <div class="mb-3">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0 small text-uppercase fw-semibold" style="letter-spacing: 0.5px;">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none text-primary">Dashboard</a></li>
+                        {% block breadcrumb %}{% endblock %}
+                    </ol>
+                </nav>
+            </div>
+            {% endif %}
+            {% endblock %}
+
             {% block content %}{% endblock %}
         </main>
     </div>
-
-    <footer class="footer mt-auto py-3 bg-light border-top" role="contentinfo">
-        <div class="container-fluid px-4 text-center">
-            <span class="text-muted small">© {% now "Y" %} Alberto Grocers. All rights reserved.</span>
-        </div>
-    </footer>
 
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100" aria-live="polite" aria-atomic="true">
@@ -373,12 +733,148 @@
         });
 
         document.addEventListener("DOMContentLoaded", function() {
+            /* ---------- THEME TOGGLE ---------- */
+            /* The inline <head> script already applied the stored theme, so here we
+               only sync the button's label/aria and handle clicks. */
+            (function initTheme() {
+                const root = document.documentElement;
+                const btn = document.getElementById('themeToggleBtn');
+                const label = document.getElementById('themeToggleLabel');
+
+                const paint = () => {
+                    const isDark = root.getAttribute('data-bs-theme') === 'dark';
+                    if (label) label.textContent = isDark ? 'DARK' : 'LIGHT';
+                    if (btn) {
+                        const next = isDark ? 'light' : 'dark';
+                        btn.setAttribute('title', 'Switch to ' + next + ' mode');
+                        btn.setAttribute('aria-label', 'Switch to ' + next + ' mode');
+                    }
+                };
+
+                if (btn) {
+                    btn.addEventListener('click', function() {
+                        const isDark = root.getAttribute('data-bs-theme') === 'dark';
+                        const next = isDark ? 'light' : 'dark';
+                        root.setAttribute('data-bs-theme', next);
+                        try { localStorage.setItem('albertoTheme', next); } catch (e) {}
+                        paint();
+                    });
+                }
+
+                /* Keep the toggle honest if the OS theme changes while the page is
+                   open - but only while the user has not made an explicit choice. */
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                    let stored = null;
+                    try { stored = localStorage.getItem('albertoTheme'); } catch (err) {}
+                    if (stored === 'light' || stored === 'dark') return;
+                    root.setAttribute('data-bs-theme', e.matches ? 'dark' : 'light');
+                    paint();
+                });
+
+                paint();
+            })();
+
+            // Sidebar toggle (mobile drawer + desktop slide-out)
+            const sidebar = document.getElementById('appSidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            const closeBtn = document.getElementById('sidebarCloseBtn');
+            const STORAGE_KEY = 'albertoSidebarCollapsed';
+            const desktopQuery = window.matchMedia('(min-width: 992px)');
+            const isDesktop = () => desktopQuery.matches;
+
+            if (sidebar && backdrop) {
+                const setCollapsed = (collapsed, persist = true) => {
+                    document.body.classList.toggle('sidebar-collapsed', collapsed);
+                    if (persist) {
+                        try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+                    }
+                    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+                };
+
+                const openDrawer = () => {
+                    sidebar.classList.add('show');
+                    backdrop.classList.add('show');
+                };
+
+                const closeDrawer = () => {
+                    sidebar.classList.remove('show');
+                    backdrop.classList.remove('show');
+                };
+
+                const closeSidebar = () => {
+                    closeDrawer();
+                    if (isDesktop()) setCollapsed(true);
+                };
+
+                // Restore the state the user last chose, so navigating between
+                // pages no longer snaps the sidebar shut. A first-time visitor
+                // (nothing stored yet) still starts collapsed, which is the
+                // "closed after logging in" behaviour. Only the POS TERMINAL
+                // forces it closed on arrival, and it does so without
+                // overwriting the preference the user set for the rest of the app.
+                const posPage = document.body.classList.contains('pos-body');
+                try {
+                    if (isDesktop()) {
+                        let stored = null;
+                        try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+                        if (posPage) {
+                            setCollapsed(true, false);
+                        } else {
+                            setCollapsed(stored !== '0');
+                        }
+                    }
+                } catch (e) {}
+
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', function() {
+                        if (isDesktop()) {
+                            setCollapsed(!document.body.classList.contains('sidebar-collapsed'));
+                        } else {
+                            sidebar.classList.contains('show') ? closeDrawer() : openDrawer();
+                        }
+                    });
+                }
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', closeSidebar);
+                }
+
+                backdrop.addEventListener('click', closeDrawer);
+
+                // Close the drawer after choosing a page (ignore in-page anchors / submenu toggles / POS submenu links)
+                sidebar.querySelectorAll('a[href]:not([href^="#"]):not(.pos-submenu-link)').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        if (!isDesktop()) closeDrawer();
+                    });
+                });
+
+                // Escape closes the sidebar
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeDrawer();
+                        if (isDesktop()) setCollapsed(true);
+                    }
+                });
+
+                // Leaving the mobile breakpoint clears any leftover drawer state
+                desktopQuery.addEventListener('change', function(e) {
+                    closeDrawer();
+                    if (e.matches) {
+                        let stored = null;
+                        try { stored = localStorage.getItem(STORAGE_KEY); } catch (err) {}
+                        setCollapsed(stored !== '0');
+                    } else {
+                        document.body.classList.remove('sidebar-collapsed');
+                    }
+                });
+            }
+
             // Initialize Toasts
-            var toastElList =[].slice.call(document.querySelectorAll('.toast'));
-            var toastList = toastElList.map(function(toastEl) {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            toastElList.forEach(function(toastEl) {
                 var t = new bootstrap.Toast(toastEl, { delay: 4000 });
                 t.show();
-                return t;
             });
 
             // Initialize TomSelect Dropdowns
@@ -386,44 +882,12 @@
                 new TomSelect(el, {
                     create: false,
                     sortField: { field: "text", direction: "asc" },
-                    plugins:['clear_button'],
+                    plugins: ['clear_button'],
                     allowEmptyOption: true,
                     placeholder: el.getAttribute('placeholder') || 'Search options...'
                 });
             });
         });
-
-        // Auto-Logout Script for Security
-        {% if user.is_authenticated %}
-        (function() {
-            let time;
-            const timeout = 15 * 60 * 1000; // 15 minutes of inactivity
-
-            function logout() {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{% url 'logout' %}";
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = 'csrfmiddlewaretoken';
-                csrfToken.value = '{{ csrf_token }}';
-                form.appendChild(csrfToken);
-                document.body.appendChild(form);
-                form.submit();
-            }
-
-            function resetTimer() {
-                clearTimeout(time);
-                time = setTimeout(logout, timeout);
-            }
-
-            window.onload = resetTimer;
-            document.onmousemove = resetTimer;
-            document.onkeypress = resetTimer;
-            document.onclick = resetTimer;
-            document.onscroll = resetTimer;
-        })();
-        {% endif %}
     </script>
     {% block extra_js %}{% endblock %}
 </body>

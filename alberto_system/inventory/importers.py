@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import HydraulicSow, POSSale, CustomerPayment
+from .models import POSSale, CustomerPayment
 
 def _read_file_to_dicts(file_obj):
     """
@@ -148,63 +148,3 @@ def import_ledger_entries_from_file(file_obj, customer, user):
     return count_charges, count_payments, []
 
 
-def import_sow_from_file(file_obj, customer, user):
-    """
-    Processes an uploaded file (CSV or XLSX) to import SOW records.
-    Returns (success_count, errors_list)
-    """
-    try:
-        data = _read_file_to_dicts(file_obj)
-    except ValueError as e:
-        return 0, [str(e)]
-        
-    if not data:
-        return 0, ["File is empty or does not contain data rows."]
-
-    count = 0
-    errors = []
-
-    try:
-        with transaction.atomic():
-            for i, row in enumerate(data, start=2):
-                try:
-                    cost_val = row.get('cost', '0').strip()
-                    cost = Decimal(cost_val) if cost_val else Decimal('0.00')
-
-                    hose_type = row.get('hose_type', '').strip()
-                    diameter = row.get('diameter', '').strip()
-                    length = str(row.get('length', '')).strip()
-                    fitting_a = row.get('fitting_a', '').strip()
-                    fitting_b = row.get('fitting_b', '').strip()
-
-                    missing = []
-                    if not hose_type: missing.append("'Hose Type'")
-                    if not diameter: missing.append("'Diameter'")
-                    if not length: missing.append("'Length'")
-                    if not fitting_a: missing.append("'Fitting A'")
-                    if not fitting_b: missing.append("'Fitting B'")
-
-                    if missing:
-                        errors.append(f"Row {i}: Missing required field(s): {', '.join(missing)}.")
-                        continue
-
-                    HydraulicSow.objects.create(
-                        customer=customer, created_by=user, hose_type=hose_type,
-                        diameter=diameter, length=length or None,
-                        pressure=row.get('pressure') or None, cost=cost if cost > 0 else None,
-                        application=row.get('application', ''), fitting_a=fitting_a,
-                        fitting_b=fitting_b, notes=row.get('notes', '')
-                    )
-                    count += 1
-                except (InvalidOperation, ValueError) as e:
-                    errors.append(f"Row {i}: Invalid number format for cost/length/pressure. Details: {e}")
-            
-            if errors:
-                raise ValueError("Errors found during processing. Rolling back changes.")
-
-    except ValueError:
-        return 0, errors
-    except Exception as e:
-        return 0, [f"An unexpected error occurred: {e}"]
-
-    return count, []

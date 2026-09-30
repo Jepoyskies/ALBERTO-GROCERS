@@ -8,7 +8,7 @@ from rest_framework import serializers
 
 from .models import (
     Product, Category, Customer, CustomerPayment, 
-    HydraulicSow, POSSale, Expense, ExpenseCategory
+    POSSale, Expense, ExpenseCategory
 )
 
 
@@ -45,13 +45,6 @@ class CustomerPaymentSerializer(serializers.ModelSerializer):
     """Serializer for tracking Customer Payments."""
     class Meta:
         model = CustomerPayment
-        fields = '__all__'
-
-
-class HydraulicSowSerializer(serializers.ModelSerializer):
-    """Serializer for Hydraulic Scope of Work (SOW) custom jobs."""
-    class Meta:
-        model = HydraulicSow
         fields = '__all__'
 
 

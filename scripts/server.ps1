@@ -16,6 +16,9 @@
       * The server is launched DETACHED from the calling session so it survives
         agent session restarts. Never start runserver as a session background job.
       * It will NOT kill a process it did not create; port conflicts are reported.
+      * The dev server runs with TEMPLATE_CACHE=false so editing a template is
+        visible on the next browser refresh. Python changes still need a restart
+        (--noreload), so run: .\scripts\server.ps1 restart
 #>
 
 param(
@@ -111,13 +114,26 @@ function Start-Server {
 
     # DETACHED launch: independent of the calling agent session's lifetime.
     # --noreload avoids the extra autoreloader child process (lighter on this box).
-    $proc = Start-Process -FilePath $Python `
-        -ArgumentList $ManagePy, 'runserver', "$Port", '--noreload' `
-        -WorkingDirectory $ProjectRoot `
-        -RedirectStandardOutput $OutLog `
-        -RedirectStandardError $ErrLog `
-        -WindowStyle Hidden `
-        -PassThru
+    #
+    # TEMPLATE_CACHE=false for the DEV server only: Django always wraps template
+    # loaders in cached.Loader, so with --noreload a .html edit would stay invisible
+    # until the next restart. Disabling the cache makes template edits show up on the
+    # next browser refresh. The variable is restored immediately so it does not leak
+    # into the calling shell or into any other session.
+    $prevTemplateCache = $env:TEMPLATE_CACHE
+    $env:TEMPLATE_CACHE = 'false'
+    try {
+        $proc = Start-Process -FilePath $Python `
+            -ArgumentList $ManagePy, 'runserver', "$Port", '--noreload' `
+            -WorkingDirectory $ProjectRoot `
+            -RedirectStandardOutput $OutLog `
+            -RedirectStandardError $ErrLog `
+            -WindowStyle Hidden `
+            -PassThru
+    } finally {
+        if ($null -eq $prevTemplateCache) { Remove-Item Env:TEMPLATE_CACHE -ErrorAction SilentlyContinue }
+        else { $env:TEMPLATE_CACHE = $prevTemplateCache }
+    }
 
     Write-Host "[START]  Launched detached (PID $($proc.Id)); waiting for it to accept requests..."
 

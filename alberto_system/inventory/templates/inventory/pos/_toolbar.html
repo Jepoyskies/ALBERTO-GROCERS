@@ -1,0 +1,55 @@
+{% comment %}
+POS TERMINAL - action toolbar.
+Icon-over-caption actions on the left, F-key actions on the right.
+The ORDER of these buttons is the LAYOUT LOCK - staff are trained on it, so
+do not reorder, merge or drop any of them. Styling lives in static/pos/pos.css
+and the behaviour is bound by data-act in pos.js.
+
+data-shortcut drives the hover/focus tooltip that names the key.
+{% endcomment %}
+<header class="pos-toolbar">
+    <div class="tb-group tb-left">
+        <button type="button" class="tb-btn" data-act="search" data-shortcut="F1 · Search" title="Search / scan (F1)">
+            <i class="fa-solid fa-magnifying-glass"></i><span>Search</span>
+        </button>
+        <button type="button" class="tb-btn" data-act="transfer" data-shortcut="F2 · Transfer" title="Transfer order to another till (F2)">
+            <i class="fa-solid fa-right-left"></i><span>Transfer</span>
+        </button>
+        <button type="button" class="tb-btn" id="btnDiscount" data-act="discount" data-shortcut="F3 · Discount" title="Discount selected line (F3)">
+            <i class="fa-solid fa-percent"></i><span>Discount</span>
+        </button>
+        {% comment %}Comment keeps its place in the trained layout. F4 now belongs to
+        the Quantity control, which lives on the QUANTITY column header in the
+        order pane - the toolbar was already exactly full, so a ninth button
+        would have pushed the F-key group off the edge.{% endcomment %}
+        <button type="button" class="tb-btn" id="btnComment" data-act="comment" title="Comment on the selected line (or double-click the line)">
+            <i class="fa-solid fa-comment-dots"></i><span>Comment</span>
+        </button>
+        <button type="button" class="tb-btn" data-act="new" data-shortcut="F5 · New sale" title="Start a new order (F5)">
+            <i class="fa-solid fa-plus"></i><span>New sale</span>
+        </button>
+        <button type="button" class="tb-btn" data-act="refund" data-shortcut="F6 · Refund" title="Refund a receipt (F6)">
+            <i class="fa-solid fa-rotate-left"></i><span>Refund</span>
+        </button>
+        <button type="button" class="tb-btn" data-act="drawer" data-shortcut="F7 · Cash drawer" title="Open / close cash drawer (F7)">
+            <i class="fa-solid fa-money-bill-transfer"></i><span>Cash drawer</span>
+        </button>
+    </div>
+
+    <div class="tb-group tb-right">
+        <button type="button" class="fkey fkey-save" data-act="save" data-shortcut="F9 · Parked / saved orders" title="Parked / saved orders (F9)">
+            <span class="keycap">F9</span> Save sale
+            <span class="fkey-badge" id="heldBadge">0</span>
+        </button>
+        {% comment %}F10 is the primary green button and the largest control in
+        the top bar. The amount is filled in by pos.js once the cart has items;
+        it is disabled while the cart is empty.{% endcomment %}
+        <button type="button" class="fkey fkey-primary" id="fkeyPay" data-act="pay" data-shortcut="F10 · Take payment" title="Take payment (F10)">
+            <span class="keycap">F10</span> Payment
+            <span class="pos-pay-amount" id="fkeyPayAmount"></span>
+        </button>
+        <button type="button" class="fkey" id="fkeyCash" data-act="cash" data-shortcut="F12 · Quick cash" title="Quick cash payment (F12)">
+            <span class="keycap">F12</span> Cash
+        </button>
+    </div>
+</header>

@@ -9,7 +9,7 @@ from django.db import transaction
 from inventory.models import (
     Category, Supplier, Product, PurchaseOrder, PurchaseOrderItem, 
     StockTransaction, Customer, CustomerPayment, POSSale, ExpenseCategory, 
-    Expense, HydraulicSow, PriceOverrideLog
+    Expense, PriceOverrideLog
 )
 
 class Command(BaseCommand):
@@ -249,47 +249,7 @@ class Command(BaseCommand):
                 recorded_by=random.choice(staff_users)
             )
 
-        # 8. Create Hydraulic SOWs (Mixed: Quotes, Paid, Charged)
-        self.stdout.write("Creating Hydraulic SOWs...")
-        for i in range(20):
-            random_days = random.randint(0, 90)
-            sow_date = timezone.now() - timedelta(days=random_days)
-            
-            # Mix of Walk-in and Named
-            is_walkin = random.random() < 0.3
-            cust = walk_in_customer if is_walkin else random.choice(customer_objs)
-            
-            sow_user = random.choice(pos_users)
-            sow = HydraulicSow.objects.create(
-                customer=cust, created_by=sow_user, hose_type=f"Type {random.choice(['A', 'B', 'C'])}",
-                diameter=f"1/{random.randint(2,8)}", application=f"Excavator Arm {i+1}",
-                cost=Decimal(random.uniform(1500, 8000)).quantize(Decimal('0.01'))
-            )
-            sow.date_created = sow_date
-            sow.save()
-
-            # 70% chance it's a charged job (Receipt generated)
-            if random.random() < 0.7:
-                # If walk-in, it's CASH. If named, could be CREDIT or CASH.
-                if is_walkin:
-                    pm = 'CASH'
-                    paid = sow.cost
-                else:
-                    pm = random.choice(['CREDIT', 'CASH'])
-                    paid = 0 if pm == 'CREDIT' else sow.cost
-                
-                POSSale.objects.create(
-                    receipt_id=sow.sow_id, 
-                    customer=cust, 
-                    cashier=sow_user, 
-                    payment_method=pm, 
-                    total_amount=sow.cost, 
-                    amount_paid=paid,
-                    notes=f"Hydraulic Job #{sow.id}", 
-                    timestamp=sow_date
-                )
-
-        # 9. Generate POS History (The heavy lifting)
+        # 8. Generate POS History (The heavy lifting)
         self.stdout.write("Generating POS transaction history...")
         end_date = timezone.now()
         start_date = end_date - timedelta(days=180) # Last 6 months
@@ -453,7 +413,7 @@ class Command(BaseCommand):
         # Delete models with foreign keys first.
         models_to_clear = [
             PriceOverrideLog, StockTransaction, PurchaseOrderItem, CustomerPayment,
-            POSSale, HydraulicSow, PurchaseOrder, Expense, Product,
+            POSSale, PurchaseOrder, Expense, Product,
             Customer, Supplier, Category, ExpenseCategory
         ]
         for model in models_to_clear:

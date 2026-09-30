@@ -54,6 +54,25 @@ if (Test-Path (Join-Path $ProjectRoot 'richland_inventory')) {
     Fail "stale 'richland_inventory' folder exists again - it will confuse BASE_DIR resolution"
 } else { Pass "no stale richland_inventory folder" }
 
+# The system is local-only, so db.sqlite3 is the ONLY copy of the shop's data.
+# There is no cloud copy and no provider to restore from, so a stale backup is a
+# real risk rather than a cosmetic one.
+$backupDir = Join-Path $ProjectRoot 'backups'
+$newestBackup = if (Test-Path $backupDir) {
+    Get-ChildItem -Path $backupDir -Filter 'db-*.sqlite3' -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+} else { $null }
+if (-not $newestBackup) {
+    Warn "no database backup found - the local db.sqlite3 is the only copy of the data"
+    Write-Host "         Create one now: .\scripts\backup.ps1" -ForegroundColor Yellow
+} elseif ($newestBackup.LastWriteTime -lt (Get-Date).AddDays(-7)) {
+    $ageDays = [int]((Get-Date) - $newestBackup.LastWriteTime).TotalDays
+    Warn "newest database backup is $ageDays day(s) old ($($newestBackup.Name))"
+    Write-Host "         Refresh it: .\scripts\backup.ps1" -ForegroundColor Yellow
+} else {
+    Pass "database backup is current ($($newestBackup.Name), $($newestBackup.LastWriteTime.ToString('yyyy-MM-dd HH:mm')))"
+}
+
 # --- 2. Django ------------------------------------------------------------
 Write-Head "2. Django system check"
 if (Test-Path $Python) {
@@ -83,6 +102,24 @@ if ($port) {
     if ($procs | Where-Object { $_.CommandLine -like '*richland_inventory*' }) {
         Fail "a runserver process is using the DELETED richland_inventory path - its BASE_DIR is invalid"
     } else { Pass "all runserver processes use alberto_system" }
+
+    # Stale-code guard. The server runs with --noreload, so it keeps executing the
+    # Python it loaded at start-up. If a .py file is newer than the process, the
+    # running server is serving OLD code and any test result is misleading.
+    # This is a Warn, not a Fail: the fix is a restart, which is a human decision.
+    $newestPy = Get-ChildItem -Path (Join-Path $ProjectRoot 'alberto_system') -Filter '*.py' -Recurse -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $oldestProc = @($procs) | Sort-Object CreationDate | Select-Object -First 1
+    if ($newestPy -and $oldestProc) {
+        $codeTime  = $newestPy.LastWriteTime.ToString('HH:mm:ss')
+        $startTime = $oldestProc.CreationDate.ToString('HH:mm:ss')
+        if ($newestPy.LastWriteTime -gt $oldestProc.CreationDate) {
+            Warn "Python code is NEWER than the running server ($($newestPy.Name) edited $codeTime, server started $startTime)"
+            Write-Host "         The server is running OLD code. Restart when convenient: .\scripts\server.ps1 restart" -ForegroundColor Yellow
+        } else {
+            Pass "no .py file is newer than the running server"
+        }
+    }
 } else {
     Warn "dev server is DOWN - start it with: .\scripts\server.ps1 start"
 }

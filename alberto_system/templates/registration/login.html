@@ -4,41 +4,28 @@
 {% block title %}Login - Alberto Grocers POS{% endblock %}
 
 {% block content %}
-<div class="auth-split">
-    <!-- ===== LEFT BRANDING PANEL ===== -->
-    <div class="auth-branding">
-        <div class="branding-content">
-            <div class="branding-logo">
-                <img src="{% static 'images/logo.png' %}" alt="Alberto Grocers Logo">
-            </div>
-            <div class="branding-hero">
-                <h1>Welcome to <span class="highlight">Alberto Grocers</span></h1>
-                <p>Your complete inventory and point-of-sale management system. Fresh solutions for your grocery business.</p>
-                <div class="branding-features">
-                    <div class="feature-item">
-                        <i class="fas fa-cash-register"></i>
-                        <span>Fast & Reliable POS Transactions</span>
-                    </div>
-                    <div class="feature-item">
-                        <i class="fas fa-boxes-stacked"></i>
-                        <span>Real-Time Inventory Tracking</span>
-                    </div>
-                    <div class="feature-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Smart Analytics & Reports</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="branding-footer">
-            &copy; {% now "Y" %} Alberto Grocers. All rights reserved.
-        </div>
-    </div>
+<div class="auth-page">
+    <!-- Decorative glow -->
+    <div class="auth-glow"></div>
 
-    <!-- ===== RIGHT FORM PANEL ===== -->
-    <div class="auth-form-panel">
-        <div class="auth-form-container">
-            <div class="form-header">
+    <!-- Centered content column -->
+    <div class="auth-content">
+
+        <!-- Branding section -->
+        <div class="auth-branding">
+            <div class="auth-badge">
+                <i class="fas fa-tag"></i> Fresh Every Day
+            </div>
+            <div class="auth-logo">
+                <img src="{% static 'images/logo_round.png' %}" alt="Alberto Grocers Logo">
+            </div>
+            <h1 class="auth-welcome">Welcome to <span class="highlight">Alberto Grocers</span></h1>
+            <p class="auth-subtitle">Your complete inventory and point-of-sale management system</p>
+        </div>
+
+        <!-- Login card -->
+        <div class="auth-card">
+            <div class="auth-card-header">
                 <h2>Welcome Back!</h2>
                 <p>Sign in to manage your grocery operations</p>
             </div>
@@ -54,7 +41,7 @@
                 </div>
             {% endif %}
 
-            <form method="post" aria-label="System Login Form">
+            <form method="post" aria-label="System Login Form" id="loginForm">
                 {% csrf_token %}
 
                 <!-- Username Field -->
@@ -92,15 +79,34 @@
                 </div>
 
                 <!-- Submit Button -->
-                <button type="submit" class="btn-signin">
-                    Sign In <i class="fas fa-arrow-right"></i>
+                <button type="submit" class="btn-signin" id="signinBtn">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Sign In <i class="fas fa-arrow-right"></i></span>
                 </button>
             </form>
+        </div>
 
-            <div class="auth-copyright">
-                &copy; {% now "Y" %} Alberto Grocers POS
+        <!-- Feature highlights -->
+        <div class="auth-features">
+            <div class="auth-feature-pill">
+                <i class="fas fa-cash-register"></i>
+                <span>POS Transactions</span>
+            </div>
+            <div class="auth-feature-pill">
+                <i class="fas fa-boxes-stacked"></i>
+                <span>Inventory Tracking</span>
+            </div>
+            <div class="auth-feature-pill">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
             </div>
         </div>
+
+        <!-- Copyright -->
+        <div class="auth-copyright">
+            &copy; {% now "Y" %} Alberto Grocers POS
+        </div>
+
     </div>
 </div>
 
@@ -119,5 +125,12 @@
             toggleIcon.classList.add('fa-eye');
         }
     }
+
+    // Loading state on submit
+    document.getElementById('loginForm').addEventListener('submit', function() {
+        const btn = document.getElementById('signinBtn');
+        btn.classList.add('loading');
+        btn.disabled = true;
+    });
 </script>
 {% endblock %}

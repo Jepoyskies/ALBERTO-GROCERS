@@ -1,0 +1,151 @@
+{% comment %}
+POS TERMINAL - payment + sale-complete modals.
+Opened by F10 / F12 and by the toolbar Payment button.
+
+LAYOUT LOCK: the ids and data-method values here are bound by pos.js
+(payMethod, payTender, payRef, payDue, payChange, btnConfirmPay, ...). The
+markup is restyled but none of those hooks are renamed.
+{% endcomment %}
+<div class="modal-scrim" id="modalPayment">
+    <div class="modal modal-pay">
+        <div class="modal-head">
+            <i class="fa-solid fa-cash-register"></i>
+            <h3>Payment</h3>
+            <button type="button" class="modal-close" data-close="modalPayment">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            {% comment %}Method tabs as filter pills. The active one wears the
+            yellow gradient, so the chosen method is never colour-only: it
+            also goes bold and keeps its border.{% endcomment %}
+            <div class="pay-methods" role="group" aria-label="Payment method">
+                <button type="button" class="pay-method active" data-method="CASH" aria-pressed="true">
+                    <i class="fa-solid fa-money-bill" aria-hidden="true"></i> Cash
+                </button>
+                <button type="button" class="pay-method" data-method="GCASH" aria-pressed="false">
+                    <i class="fa-solid fa-mobile-screen" aria-hidden="true"></i> GCash
+                </button>
+                <button type="button" class="pay-method" data-method="BANK" aria-pressed="false">
+                    <i class="fa-solid fa-building-columns" aria-hidden="true"></i> Bank
+                </button>
+                <button type="button" class="pay-method disabled" id="pmCredit" data-method="CREDIT" aria-pressed="false" disabled>
+                    <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Credit
+                </button>
+            </div>
+
+            <div class="pay-due">
+                <small>Amount due</small>
+                <div class="amt" id="payDue">&#8369;0.00</div>
+            </div>
+
+            {% comment %}The numpad. Big keys because this is the other
+            most-tapped surface on the terminal after the product grid.{% endcomment %}
+            <div class="pay-layout">
+                <div class="quick-cash" id="quickCash" role="group" aria-label="Quick amounts">
+                    <button type="button" class="qc-btn" data-amt="exact">Exact</button>
+                    <button type="button" class="qc-btn" data-amt="100">&#8369;100</button>
+                    <button type="button" class="qc-btn" data-amt="200">&#8369;200</button>
+                    <button type="button" class="qc-btn" data-amt="500">&#8369;500</button>
+                    <button type="button" class="qc-btn" data-amt="1000">&#8369;1,000</button>
+                    <button type="button" class="qc-btn" data-amt="2000">&#8369;2,000</button>
+                </div>
+
+                <div class="numpad" id="payNumpad" role="group" aria-label="Number pad">
+                    <button type="button" class="nk" data-nk="1">1</button>
+                    <button type="button" class="nk" data-nk="2">2</button>
+                    <button type="button" class="nk" data-nk="3">3</button>
+                    <button type="button" class="nk" data-nk="4">4</button>
+                    <button type="button" class="nk" data-nk="5">5</button>
+                    <button type="button" class="nk" data-nk="6">6</button>
+                    <button type="button" class="nk" data-nk="7">7</button>
+                    <button type="button" class="nk" data-nk="8">8</button>
+                    <button type="button" class="nk" data-nk="9">9</button>
+                    <button type="button" class="nk nk--fn" data-nk="clear" aria-label="Clear amount">
+                        <i class="fa-solid fa-eraser" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="nk" data-nk="0">0</button>
+                    <button type="button" class="nk nk--fn" data-nk="back" aria-label="Backspace">
+                        <i class="fa-solid fa-delete-left" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="field" id="payTenderGroup">
+                <label for="payTender">Cash tendered</label>
+                <input type="text" inputmode="decimal" class="ctl ctl-amount" id="payTender"
+                       placeholder="0.00" autocomplete="off">
+            </div>
+
+            <div class="field" id="payRefGroup" style="display:none;">
+                <label for="payRef">Reference number <span class="req">*</span></label>
+                <input type="text" class="ctl" id="payRef"
+                       placeholder="Required for GCash / bank transfers" autocomplete="off">
+            </div>
+
+            {% comment %}CHANGE is the number the cashier hands over, so it is
+            the biggest thing in the modal and it wears the yellow TEXT token
+            (8.56:1 on white - the yellow fill would be 1.85:1).{% endcomment %}
+            <div class="change-row" id="payChangeRow">
+                <span class="lbl"><i class="fa-solid fa-coins" aria-hidden="true"></i> Change</span>
+                <span class="val" id="payChange">&#8369;0.00</span>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close="modalPayment">Cancel</button>
+            <button type="button" class="btn btn-primary btn-lg" id="btnConfirmPay" disabled>Complete Sale</button>
+        </div>
+    </div>
+</div>
+
+{% comment %}SALE COMPLETE. Print receipt and New sale, as the brief asks.{% endcomment %}
+<div class="modal-scrim" id="modalReceipt">
+    <div class="modal modal-receipt">
+        <div class="modal-head">
+            <i class="fa-solid fa-circle-check ok-icon"></i>
+            <h3>Sale complete</h3>
+            <button type="button" class="modal-close" data-close="modalReceipt">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="rcpt-hero">
+                <div class="rh-check"><i class="fa-solid fa-check" aria-hidden="true"></i></div>
+                <div class="rh-amt" id="rcptTotal">&#8369;0.00</div>
+                <div class="rh-id">
+                    Receipt <span id="rcptId">-</span> &middot; <span id="rcptMethod">CASH</span>
+                </div>
+                <div class="rh-meta">
+                    <span id="rcptCust">Walk-in Customer</span> &middot; <span id="rcptDate"></span>
+                </div>
+            </div>
+
+            <table class="rcpt-table">
+                <thead>
+                    <tr>
+                        <th>Item</th><th class="num">Qty</th>
+                        <th class="num">Price</th><th class="num">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="rcptItems"></tbody>
+            </table>
+
+            <div class="rcpt-lines">
+                {% comment %}Fixed shelf prices, no tax added at the till. VAT is
+                still captured on the sale record for reporting.{% endcomment %}
+                <div class="rcpt-line"><span>Total</span><span id="rcptTotalLine">&#8369;0.00</span></div>
+                <div class="rcpt-line"><span>Tendered</span><span id="rcptPaid">&#8369;0.00</span></div>
+                <div class="rcpt-line hl"><span>Change</span><span id="rcptChange">&#8369;0.00</span></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" id="btnPrint">
+                <i class="fa-solid fa-print" aria-hidden="true"></i> Print receipt
+            </button>
+            <a class="btn btn-ghost" href="{% url 'inventory:pos_history' %}">
+                <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> History
+            </a>
+            <button type="button" class="btn btn-primary btn-lg" id="btnDone">New sale</button>
+        </div>
+    </div>
+</div>

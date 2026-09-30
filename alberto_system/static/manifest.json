@@ -1,0 +1,47 @@
+{
+  "name": "Alberto Grocers POS Terminal",
+  "short_name": "Alberto POS",
+  "description": "Point-of-sale terminal and inventory management for Alberto Grocers.",
+  "start_url": "/inventory/pos/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#F4F7F4",
+  "theme_color": "#0F572F",
+  "categories": ["business", "productivity", "shopping"],
+  "icons": [
+    {
+      "src": "/static/images/favicon.png",
+      "sizes": "691x691",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/images/logo_round.png",
+      "sizes": "691x691",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/images/logo.png",
+      "sizes": "675x675",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS Terminal",
+      "url": "/inventory/pos/"
+    },
+    {
+      "name": "Product Catalog",
+      "url": "/inventory/"
+    },
+    {
+      "name": "Sales History",
+      "url": "/inventory/pos/history/"
+    }
+  ]
+}

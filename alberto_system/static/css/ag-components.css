@@ -1,0 +1,826 @@
+/* ============================================================================
+   ALBERTO GROCERS THEME - SHARED COMPONENT LIBRARY
+   ----------------------------------------------------------------------------
+   Ported from the Gametech Customers Directory reference and re-coloured for
+   Alberto Grocers. Same anatomy, same spacing, new values - so the reference's
+   structure carries over exactly.
+
+   Load AFTER ag-tokens.css. No raw hex in this file: tokens only.
+
+   Prefix: .ag-  (Alberto Grocers).
+
+   REFERENCE ALIASES
+   Every component selector is written as ".ag-x, .gt-x" so markup lifted
+   straight out of the Gametech reference works unchanged. The alias costs
+   nothing and means a component can be copied across without a rename pass.
+
+   DELIBERATE FIXES to the reference, not copies of it:
+     - the excess !important and the inline style="" attributes are gone;
+       colour intent is expressed with modifier classes + tokens
+     - the Actions column never clips and the table needs no horizontal
+       scrollbar at normal desktop widths (see .ag-table-actions)
+   ========================================================================== */
+
+/* ==========================================================================
+   1. PAGE HEADER / HERO
+   Content pages only. NEVER on the POS terminal.
+   ========================================================================== */
+.ag-page-header,
+.gt-page-header {
+    background: var(--surface-card-gradient);
+    border: var(--gt-border-card);
+    border-left: 6px solid var(--ag-yellow-400);
+    border-radius: var(--gt-radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: var(--gt-sp-5);
+    position: relative;
+    overflow: hidden;
+}
+.ag-page-header::before,
+.gt-page-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ag-yellow-400), transparent);
+}
+.ag-page-header::after,
+.gt-page-header::after {
+    content: '';
+    position: absolute;
+    top: -80px; right: -60px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, var(--ag-yellow-400) 0%, transparent 70%);
+    opacity: 0.14;
+    pointer-events: none;
+}
+
+.ag-header-icon,
+.gt-header-icon {
+    width: 56px; height: 56px; min-width: 56px;
+    border-radius: var(--gt-radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    color: var(--color-accent);
+    background: var(--ag-yellow-soft);
+    border: 1px solid var(--ag-yellow-border);
+    flex-shrink: 0;
+}
+
+.ag-header-eyebrow,
+.gt-header-eyebrow {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: var(--gt-radius-pill);
+    font-size: var(--gt-fs-micro);
+    font-weight: 700;
+    letter-spacing: var(--gt-ls-label);
+    text-transform: uppercase;
+    color: var(--color-accent);
+    background: var(--ag-yellow-soft);
+    border: 1px solid var(--ag-yellow-border);
+}
+
+.ag-header-title,
+.gt-header-title {
+    font-size: var(--gt-fs-hero);
+    font-weight: 700;
+    letter-spacing: var(--gt-ls-hero);
+    color: var(--text-primary);
+    line-height: 1.15;
+    margin: 0 0 0.25rem;
+}
+.ag-header-sub,
+.gt-header-sub {
+    font-size: var(--gt-fs-base);
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* ==========================================================================
+   2. KPI CARDS  (also the POS product tile and the Inventory filter tile)
+   ========================================================================== */
+.ag-kpi-card,
+.gt-kpi-card {
+    background: var(--surface-card-gradient);
+    border: var(--gt-border-card);
+    border-radius: var(--gt-radius-card);
+    box-shadow: var(--shadow-card);
+    padding: 1.4rem 1.5rem;
+    display: flex; align-items: center; gap: 1.15rem;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--gt-t-slow) var(--gt-ease),
+                box-shadow var(--gt-t-slow) var(--gt-ease),
+                border-color var(--gt-t-slow) var(--gt-ease);
+}
+.ag-kpi-card:hover,
+.gt-kpi-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--ag-yellow-border);
+    box-shadow: var(--shadow-raised);
+}
+.ag-kpi-card.is-active,
+.gt-kpi-card.is-active {
+    border-color: var(--ag-yellow-400);
+    box-shadow: 0 0 0 1px var(--ag-yellow-border), var(--shadow-card);
+}
+.ag-kpi-card.is-active .ag-kpi-val,
+.gt-kpi-card.is-active .gt-kpi-val { color: var(--ag-yellow-text); }
+
+.ag-kpi-card--compact,
+.gt-kpi-card--compact { padding: 0.85rem 1rem; gap: 0.85rem; }
+.ag-kpi-card--compact .ag-kpi-icon,
+.gt-kpi-card--compact .gt-kpi-icon { width: 40px; height: 40px; min-width: 40px; font-size: 1rem; }
+.ag-kpi-card--compact .ag-kpi-val,
+.gt-kpi-card--compact .gt-kpi-val { font-size: 1.35rem; }
+.ag-kpi-card--compact .ag-kpi-lbl,
+.gt-kpi-card--compact .gt-kpi-lbl { font-size: 10px; white-space: nowrap; }
+
+.ag-kpi-icon,
+.gt-kpi-icon {
+    width: 56px; height: 56px; min-width: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    background: var(--ag-yellow-soft);
+    color: var(--color-accent);
+    border: 1px solid var(--ag-yellow-border);
+}
+
+/* Semantic icon tints.
+   The reference hard-coded these in style="" attributes - that is exactly the
+   problem being fixed, so each intent is a modifier class here. */
+.ag-kpi-icon--success { background: var(--color-success-soft); color: var(--color-success-ink); border-color: var(--color-success-soft); }
+.ag-kpi-icon--warning { background: var(--color-warning-soft); color: var(--color-warning-ink); border-color: var(--color-warning-soft); }
+.ag-kpi-icon--danger  { background: var(--color-danger-soft);  color: var(--color-danger-ink);  border-color: var(--color-danger-soft); }
+.ag-kpi-icon--neutral { background: var(--color-neutral-soft); color: var(--color-neutral-ink); border-color: var(--color-neutral-soft); }
+.ag-kpi-icon--info    { background: var(--color-info-soft);    color: var(--color-info-ink);    border-color: var(--color-info-soft); }
+
+.ag-kpi-val,
+.gt-kpi-val {
+    font-size: var(--gt-fs-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.1;
+    letter-spacing: var(--gt-ls-tight);
+}
+.ag-kpi-lbl,
+.gt-kpi-lbl {
+    font-size: var(--gt-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--gt-ls-label);
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* ==========================================================================
+   3. FILTER PILLS  (horizontally scrollable, yellow gradient when active)
+   ========================================================================== */
+.ag-filter-pills-row,
+.gt-filter-pills-row {
+    display: flex;
+    align-items: center;
+    gap: var(--gt-sp-3);
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px 0 6px;
+    margin-bottom: var(--gt-sp-4);
+    flex-wrap: nowrap;
+}
+.ag-filter-pills-row::-webkit-scrollbar,
+.gt-filter-pills-row::-webkit-scrollbar { display: none; }
+
+.ag-filter-pill,
+.gt-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 40px;
+    padding: 0 1.15rem;
+    border-radius: var(--gt-radius-pill);
+    font-size: var(--gt-fs-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background var(--gt-t) var(--gt-ease),
+                border-color var(--gt-t) var(--gt-ease),
+                color var(--gt-t) var(--gt-ease),
+                box-shadow var(--gt-t) var(--gt-ease),
+                transform var(--gt-t) var(--gt-ease);
+}
+.ag-filter-pill:hover:not(.active):not(:disabled),
+.gt-filter-pill:hover:not(.active):not(:disabled) {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+    border-color: var(--ag-yellow-border);
+}
+.ag-filter-pill.active,
+.gt-filter-pill.active {
+    color: var(--ag-yellow-ink);
+    background: var(--ag-yellow-gradient);
+    border: 1px solid var(--ag-yellow-border);
+    font-weight: 700;
+    box-shadow: var(--shadow-yellow);
+}
+.ag-filter-pill.is-disabled,
+.ag-filter-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: var(--surface-subtle);
+}
+
+/* Taller variant for the POS category chips - 44px minimum tap target. */
+.ag-filter-pill--lg { height: 44px; font-size: var(--gt-fs-base); padding: 0 1.35rem; }
+
+/* ==========================================================================
+   4. BUTTONS
+   ========================================================================== */
+.ag-btn-primary,
+.ag-btn-secondary,
+.ag-btn-danger,
+.ag-btn-ghost,
+.gt-btn-primary,
+.gt-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--gt-radius-btn);
+    padding: 0.6rem 1.15rem;
+    font-size: var(--gt-fs-base);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background var(--gt-t) var(--gt-ease),
+                border-color var(--gt-t) var(--gt-ease),
+                color var(--gt-t) var(--gt-ease),
+                box-shadow var(--gt-t) var(--gt-ease),
+                filter var(--gt-t) var(--gt-ease),
+                transform var(--gt-t) var(--gt-ease);
+}
+
+.ag-btn-primary,
+.gt-btn-primary {
+    background: var(--ag-green-gradient);
+    color: var(--text-on-fill);
+    border-color: var(--ag-green-800);
+    box-shadow: var(--shadow-primary);
+}
+.ag-btn-primary:hover:not(:disabled),
+.gt-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: var(--shadow-primary-hover);
+    transform: translateY(-1px);
+}
+.ag-btn-primary:active:not(:disabled),
+.gt-btn-primary:active:not(:disabled) { transform: translateY(0); }
+
+.ag-btn-secondary,
+.gt-btn-secondary {
+    background: var(--surface-subtle);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+.ag-btn-secondary:hover:not(:disabled),
+.gt-btn-secondary:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--ag-yellow-border);
+    color: var(--ag-yellow-text);
+}
+
+/* DESTRUCTIVE. Red is never used alone: always ship an icon or a word. */
+.ag-btn-danger {
+    background: var(--ag-red-600);
+    color: var(--text-on-fill);
+    border-color: var(--ag-red-700);
+    box-shadow: var(--shadow-red);
+}
+.ag-btn-danger:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.ag-btn-danger:focus-visible { outline-color: var(--ag-red-600); }
+
+.ag-btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+    box-shadow: none;
+}
+.ag-btn-ghost:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-primary); }
+
+.ag-btn-lg    { padding: 0.8rem 1.6rem; font-size: var(--gt-fs-md); }
+.ag-btn-sm    { padding: 0.35rem 0.85rem; font-size: var(--gt-fs-sm); }
+.ag-btn-block { width: 100%; }
+
+/* Disabled reads as clearly disabled but stays legible. */
+.ag-btn-primary:disabled,
+.ag-btn-secondary:disabled,
+.ag-btn-danger:disabled,
+.ag-btn-ghost:disabled {
+    background: var(--surface-subtle);
+    color: var(--text-subtle);
+    border-color: var(--border-divider);
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+}
+
+/* ==========================================================================
+   5. ICON BUTTONS  (Actions column, and the POS Delete / Void controls)
+   ========================================================================== */
+.ag-icon-btn,
+.gt-icon-btn {
+    width: 36px; height: 36px;
+    border-radius: var(--gt-radius-btn);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-subtle);
+    border: var(--gt-border-card);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--gt-t-fast) var(--gt-ease),
+                border-color var(--gt-t-fast) var(--gt-ease),
+                color var(--gt-t-fast) var(--gt-ease);
+}
+.ag-icon-btn:hover:not(:disabled),
+.gt-icon-btn:hover:not(:disabled) {
+    color: var(--ag-yellow-text);
+    background: var(--ag-yellow-soft);
+    border-color: var(--ag-yellow-border);
+}
+.ag-icon-btn--danger:hover:not(:disabled),
+.gt-icon-btn--danger:hover:not(:disabled) {
+    color: var(--ag-red-700);
+    background: var(--ag-red-soft);
+    border-color: var(--ag-red-border);
+}
+.ag-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Icon + label variant, used by POS Delete and Void order. */
+.ag-icon-btn--labelled {
+    width: auto;
+    height: 44px;
+    padding: 0 0.9rem;
+    gap: 0.45rem;
+    font-size: var(--gt-fs-sm);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   6. FORM CONTROLS  (search pill, select / filter dropdown)
+   ========================================================================== */
+.ag-search-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 40px;
+    padding: 0 0.9rem;
+    background: var(--surface-subtle);
+    border: var(--gt-border-card);
+    border-radius: var(--gt-radius-btn);
+    color: var(--text-subtle);
+    transition: border-color var(--gt-t) var(--gt-ease), box-shadow var(--gt-t) var(--gt-ease);
+}
+.ag-search-pill:focus-within {
+    border-color: var(--ag-yellow-border);
+    box-shadow: 0 0 0 3px var(--ag-yellow-soft);
+}
+.ag-search-pill input,
+.ag-search-pill select {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--gt-fs-sm);
+    font-weight: 600;
+}
+.ag-search-pill input::placeholder { color: var(--text-subtle); }
+
+.ag-search-pill--lg {
+    min-height: 52px;
+    padding: 0 1.25rem;
+    background: var(--surface-card);
+    border-color: var(--border-control);
+}
+.ag-search-pill--lg input { font-size: var(--gt-fs-md); }
+
+.ag-select-filter,
+.gt-select-filter {
+    background: var(--surface-card);
+    border: var(--gt-border-card);
+    border-radius: var(--gt-radius-btn);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--gt-fs-sm);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    transition: border-color var(--gt-t) var(--gt-ease), box-shadow var(--gt-t) var(--gt-ease);
+}
+.ag-select-filter:focus,
+.gt-select-filter:focus {
+    outline: none;
+    border-color: var(--ag-yellow-border);
+    box-shadow: 0 0 0 3px var(--ag-yellow-soft);
+}
+
+/* ==========================================================================
+   7. TABLE CARD + TABLE
+   ========================================================================== */
+.ag-table-card,
+.gt-table-card {
+    background: var(--surface-card-gradient);
+    border: var(--gt-border-card);
+    border-radius: var(--gt-radius-card);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    margin-bottom: var(--gt-sp-5);
+}
+
+.ag-table-toolbar,
+.gt-table-toolbar {
+    padding: 1.1rem 1.5rem;
+    border-bottom: var(--gt-border-divider);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--gt-sp-3);
+}
+.ag-table-toolbar .ag-select-filter,
+.ag-table-toolbar .ag-search-pill { min-height: 40px; }
+
+.ag-table,
+.gt-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-secondary);
+    /* auto layout, never table-layout:fixed - a fixed layout is what made the
+       reference's Actions column clip. Auto lets the browser size the Actions
+       cell from its own content and squeeze the ellipsisable cells instead. */
+}
+.ag-table thead th,
+.gt-table thead th {
+    padding: 0.9rem 1.1rem;
+    font-size: var(--gt-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--gt-ls-label);
+    color: var(--text-muted);
+    background: var(--surface-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.ag-table thead th:first-child,
+.gt-table thead th:first-child,
+.ag-table tbody td:first-child,
+.gt-table tbody td:first-child { padding-left: 1.5rem; }
+.ag-table thead th:last-child,
+.gt-table thead th:last-child,
+.ag-table tbody td:last-child,
+.gt-table tbody td:last-child { padding-right: 1.5rem; }
+.ag-table tbody td,
+.gt-table tbody td {
+    padding: 1rem 1.1rem;
+    font-size: var(--gt-fs-base);
+    color: var(--text-secondary);
+    background: transparent;
+    border-bottom: 1px solid var(--border-divider);
+    vertical-align: middle;
+}
+.ag-table tbody tr,
+.gt-table tbody tr {
+    background: transparent;
+    transition: background-color var(--gt-t-fast) var(--gt-ease);
+}
+.ag-table tbody tr:hover td,
+.gt-table tbody tr:hover td { background-color: var(--surface-hover); }
+
+/* THE FIX for the reference's clipping Actions column: sized from its own
+   content, never truncated, and the wrapper never overflows. */
+.ag-table-actions,
+.gt-table-actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+.ag-table-actions > *,
+.gt-table-actions > * {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+}
+
+/* Long, unbreakable cell text ellipsises instead of widening the table. */
+.ag-truncate {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ag-cell-strong { font-weight: 600; color: var(--text-primary); }
+.ag-cell-muted  { color: var(--text-muted); font-size: var(--gt-fs-sm); }
+.ag-cell-mono   { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--gt-fs-xs); color: var(--text-muted); }
+
+/* Table footer + pagination */
+.ag-table-footer,
+.gt-table-footer {
+    padding: 1rem 1.5rem;
+    border-top: var(--gt-border-divider);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--gt-sp-3);
+    font-size: var(--gt-fs-sm);
+    color: var(--text-muted);
+}
+.ag-pagination,
+.gt-pagination { display: flex; align-items: center; gap: 0.3rem; }
+.ag-page-btn,
+.gt-page-btn {
+    min-width: 32px; height: 32px;
+    padding: 0 0.5rem;
+    border-radius: var(--gt-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-subtle);
+    border: var(--gt-border-card);
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: var(--gt-fs-sm);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--gt-t-fast) var(--gt-ease),
+                border-color var(--gt-t-fast) var(--gt-ease),
+                color var(--gt-t-fast) var(--gt-ease);
+}
+.ag-page-btn:hover:not(:disabled):not(.active),
+.gt-page-btn:hover:not(:disabled):not(.active) { border-color: var(--ag-yellow-border); color: var(--ag-yellow-text); }
+.ag-page-btn.active,
+.gt-page-btn.active {
+    background: var(--ag-yellow-gradient);
+    color: var(--ag-yellow-ink);
+    border-color: var(--ag-yellow-border);
+    box-shadow: var(--shadow-yellow);
+}
+.ag-page-btn:disabled,
+.gt-page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Row state tints. Colour REINFORCES the badge; the badge carries the word. */
+.ag-row-danger  { background: var(--color-danger-soft); }
+.ag-row-warning { background: var(--color-warning-soft); }
+.ag-row-muted   { opacity: 0.7; }
+
+/* ==========================================================================
+   8. STATUS BADGES + STATUS DOTS
+   ========================================================================== */
+.ag-status,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: var(--gt-radius-pill);
+    font-family: var(--font-body);
+    font-size: var(--gt-fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.ag-status--success,
+.status-badge--success { background: var(--badge-success-bg); color: var(--badge-success-text); border: 1px solid color-mix(in srgb, var(--badge-success-text) 25%, transparent); }
+.ag-status--warning,
+.status-badge--warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); border: 1px solid color-mix(in srgb, var(--badge-warning-text) 25%, transparent); }
+.ag-status--danger,
+.status-badge--danger  { background: var(--badge-danger-bg);  color: var(--badge-danger-text);  border: 1px solid color-mix(in srgb, var(--badge-danger-text) 25%, transparent); }
+.ag-status--info,
+.status-badge--info    { background: var(--badge-info-bg);    color: var(--badge-info-text);    border: 1px solid color-mix(in srgb, var(--badge-info-text) 25%, transparent); }
+.ag-status--neutral,
+.status-badge--neutral { background: var(--badge-neutral-bg); color: var(--badge-neutral-text); border: 1px solid color-mix(in srgb, var(--badge-neutral-text) 25%, transparent); }
+
+.ag-status-dot,
+.status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    background: currentColor;
+}
+
+/* Small standalone status dots - stock levels, sync state, connection. */
+.ag-dot,
+.gt-conn-dot {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+.ag-dot--in, .ag-dot--online,
+.gt-conn-dot--online  { background: var(--stock-in);  box-shadow: 0 0 7px color-mix(in srgb, var(--stock-in) 60%, transparent); }
+.ag-dot--low, .ag-dot--warning,
+.gt-conn-dot--warning { background: var(--stock-low); box-shadow: 0 0 7px color-mix(in srgb, var(--stock-low) 55%, transparent); }
+.ag-dot--out, .ag-dot--offline,
+.gt-conn-dot--offline { background: var(--stock-out); box-shadow: 0 0 7px color-mix(in srgb, var(--stock-out) 55%, transparent); }
+
+/* ==========================================================================
+   9. STOCK BAR  (Inventory: the coloured level bar under the number)
+   ========================================================================== */
+.ag-stock-bar {
+    width: 100%;
+    min-width: 80px;
+    height: 6px;
+    border-radius: var(--gt-radius-pill);
+    background: var(--surface-sunken);
+    overflow: hidden;
+}
+.ag-stock-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transition: width var(--gt-t-slow) var(--gt-ease);
+}
+.ag-stock-bar--in  > span { background: var(--stock-in); }
+.ag-stock-bar--low > span { background: var(--stock-low); }
+.ag-stock-bar--out > span { background: var(--stock-out); }
+
+/* ==========================================================================
+   10. DROPDOWN MENU
+   ========================================================================== */
+.ag-dropdown-menu,
+.gt-dropdown-menu {
+    background: var(--surface-card);
+    border: var(--gt-border-card);
+    border-radius: var(--gt-radius-md);
+    box-shadow: var(--shadow-raised);
+    padding: 0.4rem 0;
+    font-family: var(--font-body);
+}
+.ag-dropdown-menu .dropdown-item,
+.gt-dropdown-menu .dropdown-item {
+    font-size: var(--gt-fs-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 0.55rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: background var(--gt-t-fast) var(--gt-ease);
+}
+.ag-dropdown-menu .dropdown-item:hover,
+.ag-dropdown-menu .dropdown-item:focus,
+.gt-dropdown-menu .dropdown-item:hover,
+.gt-dropdown-menu .dropdown-item:focus {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   11. EMPTY STATE + LOADING SKELETON
+   ========================================================================== */
+.ag-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gt-sp-3);
+    padding: 3.5rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+.ag-empty-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ag-yellow-soft);
+    border: 1px solid var(--ag-yellow-border);
+    color: var(--ag-yellow-text);
+    font-size: 1.6rem;
+}
+.ag-empty-title { margin: 0; font-size: var(--gt-fs-md); font-weight: 700; color: var(--text-primary); }
+.ag-empty-text  { margin: 0; font-size: var(--gt-fs-base); color: var(--text-muted); max-width: 42ch; }
+
+.ag-skeleton {
+    background: linear-gradient(90deg,
+        var(--surface-subtle) 25%, var(--surface-hover) 37%, var(--surface-subtle) 63%);
+    background-size: 400% 100%;
+    animation: ag-shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--gt-radius-sm);
+}
+@keyframes ag-shimmer {
+    0%   { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+/* ==========================================================================
+   12. TOASTS
+   ========================================================================== */
+.ag-toast-container {
+    position: fixed;
+    top: 1rem; right: 1rem;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+.ag-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 260px;
+    max-width: 380px;
+    padding: 0.8rem 1rem;
+    background: var(--surface-card);
+    border: var(--gt-border-card);
+    border-left: 3px solid var(--ag-green-700);
+    border-radius: var(--gt-radius-md);
+    box-shadow: var(--shadow-raised);
+    font-family: var(--font-body);
+    font-size: var(--gt-fs-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    pointer-events: auto;
+    animation: ag-toast-in 180ms var(--gt-ease);
+}
+.ag-toast i { font-size: 1rem; color: var(--ag-green-700); }
+.ag-toast--success { border-left-color: var(--color-success); }
+.ag-toast--success i { color: var(--color-success); }
+.ag-toast--error { border-left-color: var(--color-danger); }
+.ag-toast--error i { color: var(--color-danger); }
+.ag-toast--warning { border-left-color: var(--color-warning); }
+.ag-toast--warning i { color: var(--color-warning-ink); }
+.ag-toast--info { border-left-color: var(--color-info); }
+.ag-toast--info i { color: var(--color-info-ink); }
+.ag-toast--dismiss { animation: ag-toast-out 180ms var(--gt-ease) forwards; }
+
+@keyframes ag-toast-in  { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes ag-toast-out { to   { opacity: 0; transform: translateX(24px); } }
+
+/* ==========================================================================
+   13. FADE-IN-UP
+   ========================================================================== */
+@keyframes agFadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ag-animate,
+.animate-fade-in { animation: agFadeInUp 250ms var(--gt-ease) both; }
+.ag-animate--delay-1,
+.animate-delay-1  { animation-delay: 80ms; }
+.ag-animate--delay-2,
+.animate-delay-2  { animation-delay: 160ms; }
+.ag-animate--delay-3 { animation-delay: 240ms; }
+
+/* ==========================================================================
+   14. UTILITIES
+   ========================================================================== */
+.ag-tricolor-bar {
+    height: 4px;
+    background: var(--ag-tricolor);
+    border-radius: var(--gt-radius-pill);
+}
+.ag-row-gap     { display: flex; align-items: center; gap: var(--gt-sp-2); }
+.ag-muted       { color: var(--text-muted); }
+.ag-strong      { color: var(--text-primary); font-weight: 600; }
+.ag-num         { font-variant-numeric: tabular-nums; }
+.ag-yellow-text { color: var(--ag-yellow-text); }
+
+.ag-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

@@ -1,0 +1,384 @@
+{% load static %}
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <script>
+        /* Apply the saved theme BEFORE first paint. */
+        (function () {
+            try {
+                var stored = localStorage.getItem('albertoTheme');
+                if (stored !== 'light' && stored !== 'dark') {
+                    stored = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.setAttribute('data-bs-theme', stored);
+            } catch (e) { }
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Alberto Grocers - POS Terminal">
+    <meta name="author" content="Alberto Grocers">
+    <meta name="theme-color" content="#0F572F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Alberto POS">
+    <title>{% block title %}POS Terminal{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'images/logo_round.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+
+    <!-- Google Fonts: Poppins (the one brand typeface) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap CSS.
+         This page loads the Bootstrap JS bundle (for the dropdowns in the top
+         bar) but was missing the matching stylesheet, so .dropdown-menu had
+         no `display:none` and every menu rendered permanently open. Local
+         copy - the terminal must not depend on the network to look right. -->
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <!-- Alberto Grocers Theme: tokens first, then the component library.
+         These two files are the single source of truth for every colour,
+         radius and shadow in the app. Nothing below may hard-code one.
+         They load AFTER Bootstrap so the theme wins on equal specificity. -->
+    <link rel="stylesheet" href="{% static 'css/ag-tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ag-components.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}pos-body{% endblock %}">
+
+    <!-- POS Top Bar (slim, ~56px) -->
+    <header class="pos-topbar" role="banner">
+        <div class="pos-tb-left">
+            <button type="button" class="pos-tb-btn" id="posSidebarToggle" aria-label="Open navigation" aria-expanded="false" title="Menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="pos-tb-cashier" id="posCashierInfo">
+                <span class="pos-tb-label">Cashier</span>
+                <span class="pos-tb-value" id="posCashierName">{{ user.username|default:"Staff" }}</span>
+            </div>
+            <div class="pos-tb-divider" aria-hidden="true"></div>
+            <div class="pos-tb-shift" id="posShiftInfo" title="Shift / Register">
+                <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                <span class="pos-tb-label">Shift</span>
+                <span class="pos-tb-value" id="posShiftText">1 &middot; Reg 1</span>
+            </div>
+        </div>
+
+        <div class="pos-tb-center" aria-hidden="true">
+            <span class="pos-tb-title">Alberto Grocers — POS Terminal</span>
+        </div>
+
+        <div class="pos-tb-right">
+            <button type="button" class="pos-tb-btn pos-tb-theme" id="posThemeToggle" aria-label="Toggle theme" title="Light / Dark">
+                <i class="fa-solid fa-sun theme-icon-sun" aria-hidden="true"></i>
+                <i class="fa-solid fa-moon theme-icon-moon" aria-hidden="true"></i>
+                <span class="pos-tb-theme-label" id="posThemeLabel">LIGHT</span>
+            </button>
+
+            <div class="pos-tb-divider" aria-hidden="true"></div>
+
+            <div class="dropdown pos-tb-dropdown">
+                <button type="button" class="pos-tb-btn pos-tb-notif" id="posNotifBell" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications" title="Notifications">
+                    <i class="far fa-bell"></i>
+                    <span class="pos-tb-badge" id="posNotifBadge" {% if not notif_count %}hidden{% endif %}>{{ notif_count|default:0 }}</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end pos-tb-notif-menu" aria-labelledby="posNotifBell">
+                    <div class="pos-tb-notif-head">
+                        <span>Notifications</span>
+                        {% if notif_count %}<span class="badge bg-danger">{{ notif_count }}</span>{% endif %}
+                    </div>
+                    <div class="pos-tb-notif-list">
+                        {% for item in notif_items %}
+                        <a class="pos-tb-notif-item" href="{% url 'inventory:product_list' %}">
+                            <span class="pos-tb-notif-icon"><i class="fas fa-triangle-exclamation"></i></span>
+                            <span class="pos-tb-notif-body">
+                                <span class="pos-tb-notif-title">{{ item.name }}</span>
+                                <span class="pos-tb-notif-sub">{{ item.quantity }} in stock · reorder at {{ item.reorder_level }}</span>
+                            </span>
+                        </a>
+                        {% empty %}
+                        <div class="pos-tb-notif-empty">
+                            <i class="fas fa-circle-check"></i>
+                            {% if notif_count %}No items to show.{% else %}Stock levels look healthy.{% endif %}
+                        </div>
+                        {% endfor %}
+                        {% if notif_extra %}
+                        <div class="pos-tb-notif-empty">+{{ notif_extra }} more…</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="pos-tb-btn pos-tb-fullscreen" id="posFullscreenToggle" aria-label="Toggle fullscreen" title="Fullscreen (F11)">
+                <i class="fa-solid fa-expand"></i>
+                <i class="fa-solid fa-compress" style="display:none;"></i>
+            </button>
+
+            <div class="dropdown">
+                <button type="button" class="pos-tb-btn pos-tb-user" id="posUserMenu" data-bs-toggle="dropdown" aria-expanded="false" title="User menu">
+                    <span class="pos-tb-avatar">{{ user.username|slice:":1"|upper }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end pos-tb-user-menu" aria-labelledby="posUserMenu">
+                    <li class="pos-tb-user-head">
+                        <div class="pos-tb-user-name">{{ user.username }}</div>
+                        <small class="text-muted">{{ user.email|default:"Staff Member" }}</small>
+                    </li>
+                    {% if user.is_staff %}
+                    <li><a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank"><i class="fas fa-cog me-2"></i> Admin Panel</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% endif %}
+                    <li>
+                        <form action="{% url 'logout' %}" method="post" class="px-2 py-1">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item w-100 text-danger"><i class="fas fa-sign-out-alt me-2"></i> Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Drawer (overlay, doesn't push layout) -->
+    <div class="pos-sidebar-backdrop" id="posSidebarBackdrop" aria-hidden="true"></div>
+    <aside class="pos-sidebar" id="posSidebar" role="navigation" aria-label="Main navigation">
+        <div class="pos-sidebar-header">
+            <a href="{% url 'dashboard' %}" class="pos-sidebar-brand">
+                <img src="{% static 'images/logo_round.png' %}" alt="Alberto Grocers" class="pos-sidebar-logo">
+                <div>
+                    <div class="pos-sidebar-title">Alberto Grocers</div>
+                    <small class="pos-sidebar-sub">Inventory & POS</small>
+                </div>
+            </a>
+            <button type="button" class="pos-sidebar-close" id="posSidebarClose" aria-label="Close navigation">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <nav class="pos-sidebar-nav">
+            <ul class="list-unstyled">
+                <li><a href="{% url 'dashboard' %}" class="pos-nav-link"><i class="fa-solid fa-th-large"></i><span>Dashboard</span></a></li>
+                {% if perms.inventory.add_possale or perms.inventory.view_possale %}
+                <li>
+                    <a href="#" class="pos-nav-link pos-nav-parent" data-bs-toggle="collapse" data-bs-target="#posSubmenu" aria-expanded="false"><i class="fa-solid fa-cash-register"></i><span>POS</span><i class="fa-solid fa-chevron-down"></i></a>
+                    <ul class="collapse list-unstyled pos-submenu" id="posSubmenu">
+                        <li><a href="{% url 'inventory:pos_dashboard' %}" class="pos-sub-link">POS Terminal</a></li>
+                        <li><a href="{% url 'inventory:pos_history' %}" class="pos-sub-link">Sales History</a></li>
+                        <li><a href="{% url 'inventory:refund_portal' %}" class="pos-sub-link">Refund Portal</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                {% if perms.inventory.view_product %}
+                <li>
+                    <a href="#" class="pos-nav-link pos-nav-parent" data-bs-toggle="collapse" data-bs-target="#invSubmenu" aria-expanded="false"><i class="fa-solid fa-boxes"></i><span>Inventory</span><i class="fa-solid fa-chevron-down"></i></a>
+                    <ul class="collapse list-unstyled pos-submenu" id="invSubmenu">
+                        <li><a href="{% url 'inventory:product_list' %}" class="pos-sub-link">Product Catalog</a></li>
+                        {% if perms.inventory.view_stocktransaction %}
+                        <li><a href="{% url 'inventory:transaction_list' %}" class="pos-sub-link">Transaction Logs</a></li>
+                        {% endif %}
+                        {% if perms.inventory.can_view_history %}
+                        <li><a href="{% url 'inventory:product_history_list' %}" class="pos-sub-link">Audit History</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if perms.inventory.view_customer %}
+                <li><a href="{% url 'inventory:customer_list' %}" class="pos-nav-link"><i class="fa-solid fa-users"></i><span>Customers</span></a></li>
+                {% endif %}
+                {% if perms.inventory.can_view_reports or perms.inventory.view_expense %}
+                <li>
+                    <a href="#" class="pos-nav-link pos-nav-parent" data-bs-toggle="collapse" data-bs-target="#rptSubmenu" aria-expanded="false"><i class="fa-solid fa-chart-line"></i><span>Reports & Data</span><i class="fa-solid fa-chevron-down"></i></a>
+                    <ul class="collapse list-unstyled pos-submenu" id="rptSubmenu">
+                        {% if perms.inventory.can_view_reports %}
+                        <li><a href="{% url 'inventory:analytics' %}" class="pos-sub-link">Analytics</a></li>
+                        <li><a href="{% url 'inventory:reporting' %}" class="pos-sub-link">Reports Hub</a></li>
+                        {% endif %}
+                        {% if perms.inventory.view_expense %}
+                        <li><a href="{% url 'inventory:expense_list' %}" class="pos-sub-link">Expense Tracker</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user.is_staff %}
+                <li><a href="{% url 'admin:index' %}" class="pos-nav-link" target="_blank"><i class="fa-solid fa-cog"></i><span>Administration</span></a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        <div class="pos-sidebar-footer">
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="pos-sidebar-logout"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
+            </form>
+            <small>© {% now "Y" %} Alberto Grocers</small>
+        </div>
+    </aside>
+
+    <!-- Main POS workspace -->
+    <main class="pos-workspace" id="posWorkspace" role="main">
+        {% block pos_content %}{% endblock %}
+    </main>
+
+    <!-- Toasts -->
+    <div class="pos-toasts" id="posToasts" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Scripts (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        /* ---------- THEME TOGGLE (POS topbar) ---------- */
+        (function initPosTheme() {
+            const root = document.documentElement;
+            const btn = document.getElementById('posThemeToggle');
+            const label = document.getElementById('posThemeLabel');
+
+            const paint = () => {
+                const isDark = root.getAttribute('data-bs-theme') === 'dark';
+                if (label) label.textContent = isDark ? 'DARK' : 'LIGHT';
+                if (btn) {
+                    const next = isDark ? 'light' : 'dark';
+                    btn.setAttribute('title', 'Switch to ' + next + ' mode');
+                    btn.setAttribute('aria-label', 'Switch to ' + next + ' mode');
+                }
+            };
+
+            if (btn) {
+                btn.addEventListener('click', function() {
+                    const isDark = root.getAttribute('data-bs-theme') === 'dark';
+                    const next = isDark ? 'light' : 'dark';
+                    root.setAttribute('data-bs-theme', next);
+                    try { localStorage.setItem('albertoTheme', next); } catch (e) {}
+                    paint();
+                });
+            }
+
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                let stored = null;
+                try { stored = localStorage.getItem('albertoTheme'); } catch (err) {}
+                if (stored === 'light' || stored === 'dark') return;
+                root.setAttribute('data-bs-theme', e.matches ? 'dark' : 'light');
+                paint();
+            });
+
+            paint();
+        })();
+
+        /* ---------- SIDEBAR DRAWER ---------- */
+        (function initPosSidebar() {
+            const sidebar = document.getElementById('posSidebar');
+            const backdrop = document.getElementById('posSidebarBackdrop');
+            const toggleBtn = document.getElementById('posSidebarToggle');
+            const closeBtn = document.getElementById('posSidebarClose');
+
+            const openDrawer = () => {
+                sidebar.classList.add('open');
+                backdrop.classList.add('open');
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+            };
+
+            const closeDrawer = () => {
+                sidebar.classList.remove('open');
+                backdrop.classList.remove('open');
+                if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+            };
+
+            if (toggleBtn) toggleBtn.addEventListener('click', openDrawer);
+            if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+            if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+            // Close on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeDrawer();
+            });
+
+            // Close drawer when navigating (ignore in-page anchors)
+            sidebar.querySelectorAll('a[href]:not([href^="#"])').forEach(function(link) {
+                link.addEventListener('click', closeDrawer);
+            });
+        })();
+
+        /* ---------- FULLSCREEN API ---------- */
+        (function initPosFullscreen() {
+            const btn = document.getElementById('posFullscreenToggle');
+            const workspace = document.getElementById('posWorkspace');
+            const expandIcon = btn?.querySelector('.fa-expand');
+            const compressIcon = btn?.querySelector('.fa-compress');
+
+            const updateIcons = () => {
+                const isFS = document.fullscreenElement === workspace;
+                if (expandIcon) expandIcon.style.display = isFS ? 'none' : 'inline-block';
+                if (compressIcon) compressIcon.style.display = isFS ? 'inline-block' : 'none';
+                if (btn) btn.setAttribute('aria-label', isFS ? 'Exit fullscreen' : 'Enter fullscreen');
+                if (btn) btn.title = isFS ? 'Exit fullscreen' : 'Fullscreen (F11)';
+            };
+
+            if (btn && workspace) {
+                btn.addEventListener('click', async () => {
+                    try {
+                        if (!document.fullscreenElement) {
+                            await workspace.requestFullscreen();
+                        } else {
+                            await document.exitFullscreen();
+                        }
+                    } catch (e) {
+                        console.warn('Fullscreen toggle failed:', e);
+                    }
+                });
+
+                document.addEventListener('fullscreenchange', updateIcons);
+                updateIcons();
+
+                // Remember preference
+                const STORAGE_KEY = 'posFullscreen';
+                try {
+                    const pref = localStorage.getItem(STORAGE_KEY);
+                    if (pref === 'true') {
+                        // Will be triggered by user interaction on POS entry
+                    }
+                } catch (e) {}
+
+                // Expose for pos.js to call on entry
+                window.posEnterFullscreen = async () => {
+                    try {
+                        if (!document.fullscreenElement) {
+                            await workspace.requestFullscreen();
+                            try { localStorage.setItem(STORAGE_KEY, 'true'); } catch (e) {}
+                        }
+                    } catch (e) {}
+                };
+            }
+        })();
+
+        /* ---------- DISPLAY SIZE SETTING ---------- */
+        (function initDisplaySize() {
+            const STORAGE_KEY = 'posDisplaySize';
+            const sizes = ['small', 'medium', 'large'];
+            let current = 'medium';
+
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (sizes.includes(stored)) current = stored;
+            } catch (e) {}
+
+            document.documentElement.setAttribute('data-pos-size', current);
+
+            window.posSetDisplaySize = (size) => {
+                if (!sizes.includes(size)) return;
+                current = size;
+                document.documentElement.setAttribute('data-pos-size', current);
+                try { localStorage.setItem(STORAGE_KEY, current); } catch (e) {}
+            };
+
+            window.posGetDisplaySize = () => current;
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

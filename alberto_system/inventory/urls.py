@@ -63,9 +63,21 @@ urlpatterns =[
     # ==========================================
     path('pos/', views.pos_dashboard, name='pos_dashboard'),
     path('pos/checkout/', views.pos_checkout, name='pos_checkout'),
-    path('pos/sow/new/', views.pos_sow_create, name='pos_sow_create'),
     path('pos/history/', views.POSHistoryListView.as_view(), name='pos_history'),
     path('pos/receipt/<str:receipt_id>/', views.POSReceiptDetailView.as_view(), name='pos_receipt_detail'),
+
+    # --- POS Terminal toolbar actions ---
+    path('pos/hold/save/', views.pos_hold_save, name='pos_hold_save'),
+    path('pos/hold/list/', views.pos_hold_list, name='pos_hold_list'),
+    path('pos/hold/<str:ticket_id>/resume/', views.pos_hold_resume, name='pos_hold_resume'),
+    path('pos/hold/<str:ticket_id>/discard/', views.pos_hold_discard, name='pos_hold_discard'),
+    path('pos/repeat-last/', views.pos_repeat_last, name='pos_repeat_last'),
+    path('pos/customers/search/', views.pos_customer_search, name='pos_customer_search'),
+
+    # --- Cash drawer (open / close a shift) ---
+    path('pos/drawer/status/', views.pos_drawer_status, name='pos_drawer_status'),
+    path('pos/drawer/open/', views.pos_drawer_open, name='pos_drawer_open'),
+    path('pos/drawer/close/', views.pos_drawer_close, name='pos_drawer_close'),
 
     # ==========================================
     # CUSTOMERS & CRM
@@ -82,14 +94,6 @@ urlpatterns =[
     path('customers/<int:pk>/import-ledger/', views.import_ledger_entries, name='customer_ledger_import'),
     path('customers/templates/ledger/', views.download_ledger_template, name='download_ledger_template'),
     
-    # Hydraulic SOW (Scope of Work) Actions
-    path('customers/<int:pk>/sow/new/', views.hydraulic_sow_create, name='hydraulic_sow_create'),
-    path('customers/<int:pk>/sow/<int:sow_pk>/update/', views.hydraulic_sow_update, name='hydraulic_sow_update'),
-    path('customers/<int:pk>/sow/export/', views.export_sow_history, name='customer_sow_export'),
-    path('customers/<int:pk>/sow/import/', views.import_sow_history, name='customer_sow_import'),
-    path('sow/import/', views.hydraulic_sow_import, name='hydraulic_sow_import'),
-    path('customers/templates/sow/', views.download_sow_template, name='download_sow_template'),
-
     # ==========================================
     # FINANCIALS & EXPENSES
     # ==========================================

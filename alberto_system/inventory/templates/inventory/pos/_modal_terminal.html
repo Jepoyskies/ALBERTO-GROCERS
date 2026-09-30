@@ -1,0 +1,151 @@
+{% comment %}
+POS TERMINAL - terminal-level modals: cash drawer open/close, refund lookup,
+keyboard shortcut reference, plus the lock screen and toast host.
+{% endcomment %}
+<div class="modal-scrim" id="modalDrawer">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <h3>Cash drawer</h3>
+            <button type="button" class="modal-close" data-close="modalDrawer">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="change-row drawer-state">
+                <span class="lbl">Session</span>
+                <span class="val val-sm" id="drawerState">Checking&hellip;</span>
+            </div>
+
+            <div id="drawerOpenForm">
+                <div class="field">
+                    <label for="drawerFloat">Opening float</label>
+                    <input type="text" inputmode="decimal" class="ctl" id="drawerFloat"
+                           placeholder="0.00" autocomplete="off">
+                    <p class="hint">Cash placed in the drawer at the start of the shift.</p>
+                </div>
+                <button type="button" class="btn btn-success btn-block btn-lg" id="btnDrawerOpen">
+                    Open drawer
+                </button>
+            </div>
+
+            <div id="drawerCloseForm" style="display:none;">
+                <div class="field">
+                    <label for="drawerExpected">Expected in drawer</label>
+                    <div class="ctl expected-amt" id="drawerExpected">&#8369;0.00</div>
+                </div>
+                <div class="field">
+                    <label for="drawerCounted">Counted</label>
+                    <input type="text" inputmode="decimal" class="ctl ctl-amount" id="drawerCounted"
+                           placeholder="0.00" autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="drawerNotes">Closing note</label>
+                    <input type="text" class="ctl" id="drawerNotes" placeholder="Optional" autocomplete="off">
+                </div>
+                <button type="button" class="btn btn-danger btn-block btn-lg" id="btnDrawerClose">
+                    Close drawer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalRefund">
+    <div class="modal">
+        <div class="modal-head">
+            <i class="fa-solid fa-rotate-left"></i>
+            <h3>Refund a receipt</h3>
+            <button type="button" class="modal-close" data-close="modalRefund">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label for="refundId">Receipt number</label>
+                <div class="lookup-row">
+                    <input type="text" class="ctl upper" id="refundId"
+                           placeholder="REC-XXXXXXXX" autocomplete="off">
+                    <button type="button" class="btn" id="btnRefundSearch">Look up</button>
+                </div>
+            </div>
+            <div id="refundResult"></div>
+        </div>
+        <div class="modal-foot">
+            <a class="btn btn-ghost" href="{% url 'inventory:refund_portal' %}">Open Refund Portal</a>
+            <button type="button" class="btn" data-close="modalRefund">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-scrim" id="modalHelp">
+    <div class="modal modal-wide">
+        <div class="modal-head">
+            <i class="fa-solid fa-keyboard"></i>
+            <h3>Keyboard shortcuts</h3>
+            <button type="button" class="modal-close" data-close="modalHelp">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="keys-grid">
+                <div class="keys-row"><span class="kr-keys"><kbd>F1</kbd></span> Focus search / scan</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F2</kbd></span> Transfer order</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F3</kbd></span> Discount line</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F4</kbd></span> Quantity for the next item</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F5</kbd></span> New sale</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F6</kbd></span> Refund lookup</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F7</kbd></span> Cash drawer</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F8</kbd></span> Delete line</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F9</kbd></span> Parked orders</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F10</kbd></span> Payment</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F11</kbd></span> Lock terminal</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>F12</kbd></span> Quick cash payment</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd></span> Walk the order</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>+</kbd><kbd>&minus;</kbd></span> Change quantity</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>Del</kbd></span> Remove selected line</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>dbl-click</kbd></span> Comment on a line</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>Enter</kbd></span> Add scanned item</div>
+                <div class="keys-row"><span class="kr-keys"><kbd>Esc</kbd></span> Close the top panel</div>
+            </div>
+            <p class="field-hint">
+                Any letter or digit jumps straight to the search box, so a barcode
+                scanner behaves like a keyboard.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="lock-screen" id="lockScreen">
+    <div class="lock-card">
+        <div class="lk-icon"><i class="fa-solid fa-lock"></i></div>
+        <h2>Terminal locked</h2>
+        <p>The screen is hidden while you step away. Your order is kept.</p>
+        <form id="lockForm">
+            <input type="password" class="ctl" id="lockPin"
+                   placeholder="Press any key to resume" maxlength="8" autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-block">Resume</button>
+        </form>
+    </div>
+</div>
+
+{% comment %}
+ON-SCREEN KEYBOARD
+Some tills are all-touch with no physical keyboard, so there is nowhere for a
+cashier to type a product name or key a code in. This is a full-width
+keyboard that types into whatever input is focused - in practice the search
+box. Keys are real <button>s so they work with a mouse, a finger, Tab and
+Enter, and every key carries an aria-label.
+{% endcomment %}
+<div class="osk" id="posOsk" role="dialog" aria-modal="false" aria-label="On-screen keyboard" hidden>
+    <div class="osk-head">
+        <span class="osk-title"><i class="fa-solid fa-keyboard" aria-hidden="true"></i> On-screen keyboard</span>
+        <span class="osk-target" id="oskTarget">Typing into search</span>
+        <button type="button" class="osk-close" id="btnOskClose" aria-label="Close on-screen keyboard">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </div>
+    <div class="osk-body" id="oskBody"></div>
+</div>
+
+<div class="pos-toasts" id="posToasts" aria-live="polite"></div>
