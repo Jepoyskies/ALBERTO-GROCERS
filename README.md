@@ -2,6 +2,10 @@
 
 A comprehensive inventory and Point of Sale (POS) operations system customized for Alberto Grocers, designed for tracking, audit logging, and fast grocery sales.
 
+> **Working in this repo with an AI assistant?** Read **`PROJECT_CONTEXT.md`** (goal, current
+> state, commands, gotchas) and **`AGENTS.md`** (multi-agent concurrency + shared dev-server
+> rules) first. Health check: `.\scripts\verify.ps1`.
+
 ## Deployment Environments
 
 This project utilizes dedicated branches and Render hosting tiers for testing and production.
@@ -28,7 +32,7 @@ See the [Deployment and Testing Document](Group#_DeployStage.pdf) for detailed t
 ## Tech Stack
 
 *   **Backend:** Python 3.11+, Django 5.2
-*   **Database:** MySQL 8.0 (Local/Docker) / PostgreSQL (Production)
+*   **Database:** SQLite (Local) / PostgreSQL (Production via `DATABASE_URL`)
 *   **Frontend:** Bootstrap 5, Vanilla JavaScript
 *   **DevOps:** Docker, WhiteNoise (Static Files), Render (Deployment)
 *   **Security:** `django-ratelimit` (Rate Limiting)
@@ -47,16 +51,14 @@ Create `alberto_system/.env` and add the following:
 SECRET_KEY=your-secret-key-here
 DEBUG=True
 
-# Database Configuration (Local/Docker)
-DB_NAME=alberto_inventory_db
-DB_USER=user
-DB_PASSWORD=password
-DB_HOST=db
-DB_PORT=3306
-
 # Allowed Hosts (Comma separated)
 ALLOWED_HOSTS=127.0.0.1,localhost
 ```
+
+**Database:** leave `DATABASE_URL` **unset** locally. `core/settings.py` then falls back to
+SQLite at `alberto_system/db.sqlite3`, which requires no server and no configuration. Set
+`DATABASE_URL` only for PostgreSQL (Render/production), e.g.
+`DATABASE_URL=postgresql://user:pass@host:5432/dbname`.
 
 *Note: For production (Render), these variables are managed via the Render Dashboard environment settings.*
 
@@ -145,8 +147,8 @@ python manage.py createsuperuser
 
 
 ### Prerequisites
-*   Python 3.11+
-*   MySQL Server (e.g., MySQL Community Server or MariaDB)
+*   Python 3.11+ (Django 5.2)
+*   **No database server required locally** — SQLite is used by default
 
 ### Installation
 1.  **Clone & Navigate**
@@ -172,9 +174,14 @@ python manage.py createsuperuser
     python manage.py collectstatic --no-input
     ```
 5.  **Run Server**
-    ```bash
-    python manage.py runserver
+    From the repository root (note: do **not** `cd` into `alberto_system` first):
+    ```powershell
+    .\scripts\server.ps1 start
     ```
+    This launches the dev server **detached** on `http://127.0.0.1:8000` and is safe to
+    re-run — it reuses a healthy server instead of starting a duplicate.
+    Check it any time with `.\scripts\server.ps1 status`, or run a full health check with
+    `.\scripts\verify.ps1`. See `AGENTS.md` section 4 for the shared-server rules.
 
 ---
 
