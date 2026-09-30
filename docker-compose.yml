@@ -17,16 +17,16 @@ services:
   web:
     build: .
     command: >
-      sh -c "python richland_inventory/manage.py migrate &&
-             python richland_inventory/manage.py collectstatic --no-input &&
-             python richland_inventory/manage.py runserver 0.0.0.0:8000"
+      sh -c "python alberto_system/manage.py migrate &&
+             python alberto_system/manage.py collectstatic --no-input &&
+             python alberto_system/manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
       - "${WEB_PORT:-8000}:8000"
     environment:
       - DEBUG=True
-      - DB_NAME=${DB_NAME:-richland_inventory_db}
+      - DB_NAME=${DB_NAME:-alberto_inventory_db}
       - DB_USER=${DB_USER:-user}
       - DB_PASSWORD=${DB_PASSWORD:-password}
       - DB_HOST=db
