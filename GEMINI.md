@@ -1,4 +1,4 @@
-# GEMINI.md - Alberto Inventory POS (Alberto Grocers)
+# GEMINI.md - Alberto POS (Alberto Grocers)
 
 > **This file intentionally contains no rules.**
 >

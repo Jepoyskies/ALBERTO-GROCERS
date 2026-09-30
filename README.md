@@ -1,6 +1,6 @@
-# Alberto Inventory POS - Alberto Grocers
+# Alberto POS
 
-A comprehensive inventory and Point of Sale (POS) operations system customized for Alberto Grocers, designed for tracking, audit logging, and fast grocery sales.
+A comprehensive Point of Sale (POS) and inventory operations system customized for Alberto POS, designed for tracking, audit logging, and fast grocery sales.
 
 > **Working in this repo with an AI assistant?** Read **`PROJECT_CONTEXT.md`** (goal, current
 > state, commands, gotchas) and **`AGENTS.md`** (multi-agent concurrency + shared dev-server
@@ -158,8 +158,8 @@ python manage.py createsuperuser
 ### Installation
 1.  **Clone & Navigate**
     ```bash
-    git clone <repository-url>
-    cd Rich-Land-IOS
+    git clone https://github.com/Jepoyskies/ALBERTO-GROCERS.git "Alberto POS"
+    cd "Alberto POS"
     ```
 2.  **Virtual Environment**
     ```bash

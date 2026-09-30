@@ -1,5 +1,5 @@
 # AGENTS.md - Multi-Agent Concurrency & Project Guidelines
-# Project: Alberto Inventory POS (Alberto Grocers)
+# Project: Alberto POS (Alberto Grocers)
 
 This repository frequently runs multiple simultaneous AI assistant sessions. All agents MUST strictly follow these rules to avoid collisions, prevent overwriting peer progress, and maximize parallel throughput.
 
@@ -119,7 +119,7 @@ The dev server is **shared infrastructure for every session on this machine**. I
 ---
 
 ## 8. Project Identity & Default Credentials
-- **Brand Name**: **Alberto Grocers** / **Alberto Inventory POS**
+- **Brand Name**: **Alberto POS** (Alberto Grocers)
 - **Default Superuser**: `admin` / `123`
 - **Branding Assets**:
   - `alberto_system/static/images/logo.png`: Main logo banner (Cart + Alberto Grocers)

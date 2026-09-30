@@ -1,5 +1,5 @@
 <#
-    server.ps1 - Shared dev-server control for the Alberto Grocers POS.
+    server.ps1 - Shared dev-server control for the Alberto POS.
 
     This script is the ONLY sanctioned way to start/stop the Django dev server,
     because multiple AI agent sessions share this machine and port 8000.
@@ -123,19 +123,18 @@ function Start-Server {
     $prevTemplateCache = $env:TEMPLATE_CACHE
     $env:TEMPLATE_CACHE = 'false'
     try {
-        $proc = Start-Process -FilePath $Python `
-            -ArgumentList $ManagePy, 'runserver', "$Port", '--noreload' `
-            -WorkingDirectory $ProjectRoot `
-            -RedirectStandardOutput $OutLog `
-            -RedirectStandardError $ErrLog `
-            -WindowStyle Hidden `
-            -PassThru
+        $cmd = "`"$Python`" `"$ManagePy`" runserver $Port --noreload"
+        $wmiRes = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+            CommandLine = "cmd.exe /c `"$cmd 1>`"$OutLog`" 2>`"$ErrLog`"`""
+            CurrentDirectory = $ProjectRoot
+        }
+        $spawnedPid = $wmiRes.ProcessId
     } finally {
         if ($null -eq $prevTemplateCache) { Remove-Item Env:TEMPLATE_CACHE -ErrorAction SilentlyContinue }
         else { $env:TEMPLATE_CACHE = $prevTemplateCache }
     }
 
-    Write-Host "[START]  Launched detached (PID $($proc.Id)); waiting for it to accept requests..."
+    Write-Host "[START]  Launched detached (PID $spawnedPid); waiting for it to accept requests..."
 
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 1

@@ -11,7 +11,7 @@
 
 ## 1. What we are building
 
-**Alberto Grocers - Alberto Inventory POS.** A grocery-store inventory and Point-of-Sale
+**Alberto POS (Alberto Grocers).** A grocery-store inventory and Point-of-Sale
 operations system: product/stock tracking, sales, suppliers, audit logging, PDF reporting,
 and a documented REST API.
 

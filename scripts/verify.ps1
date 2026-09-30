@@ -1,5 +1,5 @@
 <#
-    verify.ps1 - One-command greenlight health check for the Alberto Grocers POS.
+    verify.ps1 - One-command greenlight health check for the Alberto POS.
 
     Read-only. Safe to run at any time, from any session, while the server is up.
     It never modifies code, never touches the database, and never starts/stops
@@ -41,7 +41,7 @@ function Test-Page {
     }
 }
 
-Write-Host "Alberto Grocers POS - health check" -ForegroundColor Cyan
+Write-Host "Alberto POS - health check" -ForegroundColor Cyan
 Write-Host "Root: $ProjectRoot"
 
 # --- 1. Environment -------------------------------------------------------

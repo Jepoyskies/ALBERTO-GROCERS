@@ -1,5 +1,5 @@
 {
-  "name": "Alberto Grocers POS Terminal",
+  "name": "Alberto POS Terminal",
   "short_name": "Alberto POS",
   "description": "Point-of-sale terminal and inventory management for Alberto Grocers.",
   "start_url": "/inventory/pos/",
