@@ -48,7 +48,7 @@ services:
       - .:/app
     environment:
       - DEBUG=True
-      - DB_NAME=${DB_NAME:-richland_inventory_db}
+      - DB_NAME=${DB_NAME:-alberto_inventory_db}
       - DB_USER=${DB_USER:-user}
       - DB_PASSWORD=${DB_PASSWORD:-password}
       - DB_HOST=db
@@ -60,7 +60,7 @@ services:
       - web
       - selenium
     command: >
-      sh -c "pytest richland_inventory/inventory/tests_integration.py"
+      sh -c "pytest alberto_system/inventory/tests_integration.py"
 
 volumes:
   mysql_data:

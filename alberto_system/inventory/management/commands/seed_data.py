@@ -13,7 +13,7 @@ from inventory.models import (
 )
 
 class Command(BaseCommand):
-    help = 'Overhauls database with comprehensive test data for Rich Land System.'
+    help = 'Overhauls database with comprehensive test data for Alberto Grocers.'
 
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.WARNING('This will wipe all existing data. Proceeding...'))

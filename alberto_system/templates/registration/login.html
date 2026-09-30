@@ -1,73 +1,123 @@
 {% extends "base_auth.html" %}
 {% load static %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Login - Alberto Grocers POS{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-body p-4 p-md-5">
-
-        <!-- Logo Section -->
-        <header class="text-center mb-4">
-            <img src="{% static 'images/logo.png' %}" alt="Alberto Grocers Logo" style="height: 65px; width: auto;">
-            <h1 class="h4 mt-3 fw-bold" style="color: var(--brand-dark);">Alberto Grocers POS</h1>
-            <p class="text-muted small text-uppercase fw-semibold ls-1">Authorized Access Only</p>
-        </header>
-
-        {% if form.non_field_errors %}
-            <div class="alert alert-danger d-flex align-items-center small" role="alert" aria-live="assertive">
-                <i class="fas fa-exclamation-circle me-2" aria-hidden="true"></i>
-                <div>
-                    {% for error in form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
+<div class="auth-split">
+    <!-- ===== LEFT BRANDING PANEL ===== -->
+    <div class="auth-branding">
+        <div class="branding-content">
+            <div class="branding-logo">
+                <img src="{% static 'images/logo.png' %}" alt="Alberto Grocers Logo">
+            </div>
+            <div class="branding-hero">
+                <h1>Welcome to <span class="highlight">Alberto Grocers</span></h1>
+                <p>Your complete inventory and point-of-sale management system. Fresh solutions for your grocery business.</p>
+                <div class="branding-features">
+                    <div class="feature-item">
+                        <i class="fas fa-cash-register"></i>
+                        <span>Fast & Reliable POS Transactions</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-boxes-stacked"></i>
+                        <span>Real-Time Inventory Tracking</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Smart Analytics & Reports</span>
+                    </div>
                 </div>
             </div>
-        {% endif %}
-
-        <form method="post" aria-label="System Login Form">
-            {% csrf_token %}
-            
-            <!-- Username Field -->
-            <div class="mb-3">
-                <label for="{{ form.username.id_for_label }}" class="form-label fw-bold text-secondary small text-uppercase">Username</label>
-                <div class="input-group">
-                    <span class="input-group-text" aria-hidden="true"><i class="fas fa-user"></i></span>
-                    <input type="text" name="{{ form.username.name }}" class="form-control" 
-                           id="{{ form.username.id_for_label }}" placeholder="Enter your username" 
-                           autocomplete="username" required>
-                </div>
-            </div>
-
-            <!-- Password Field -->
-            <div class="mb-3">
-                <label for="{{ form.password.id_for_label }}" class="form-label fw-bold text-secondary small text-uppercase">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text" aria-hidden="true"><i class="fas fa-lock"></i></span>
-                    <input type="password" name="{{ form.password.name }}" class="form-control" 
-                           id="{{ form.password.id_for_label }}" placeholder="Enter your password" 
-                           autocomplete="current-password" required>
-                </div>
-            </div>
-
-            <!-- REMEMBER ME CHECKBOX -->
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me" aria-checked="false">
-                <label class="form-check-label small text-secondary" for="remember_me">
-                    Keep me signed in
-                </label>
-            </div>
-
-            <!-- Submit Button -->
-            <div class="d-grid gap-2 mt-4">
-                <button type="submit" class="btn btn-primary" aria-label="Submit login credentials">
-                    Sign In <i class="fas fa-arrow-right ms-2" aria-hidden="true"></i>
-                </button>
-            </div>
-        </form>
+        </div>
+        <div class="branding-footer">
+            &copy; {% now "Y" %} Alberto Grocers. All rights reserved.
+        </div>
     </div>
-    <div class="card-footer text-center py-3 bg-light border-0 rounded-bottom-3">
-        <small class="text-muted" style="font-size: 0.8rem;">© {% now "Y" %} Alberto Grocers</small>
+
+    <!-- ===== RIGHT FORM PANEL ===== -->
+    <div class="auth-form-panel">
+        <div class="auth-form-container">
+            <div class="form-header">
+                <h2>Welcome Back!</h2>
+                <p>Sign in to manage your grocery operations</p>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" aria-label="System Login Form">
+                {% csrf_token %}
+
+                <!-- Username Field -->
+                <div class="form-group">
+                    <label for="{{ form.username.id_for_label }}">Username</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" name="{{ form.username.name }}" class="form-control"
+                               id="{{ form.username.id_for_label }}" placeholder="Enter your username"
+                               autocomplete="username" required>
+                    </div>
+                </div>
+
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label for="{{ form.password.id_for_label }}">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" name="{{ form.password.name }}" class="form-control"
+                               id="{{ form.password.id_for_label }}" placeholder="Enter your password"
+                               autocomplete="current-password" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="form-options">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me">
+                        <label class="form-check-label" for="remember_me">Remember me</label>
+                    </div>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-signin">
+                    Sign In <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="auth-copyright">
+                &copy; {% now "Y" %} Alberto Grocers POS
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+        const toggleIcon = document.getElementById('toggleIcon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+</script>
 {% endblock %}

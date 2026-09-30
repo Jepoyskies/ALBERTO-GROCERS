@@ -43,7 +43,7 @@ class TestHttpIntegration:
         """Verify the homepage returns a 200 OK status code."""
         response = requests.get(WEB_URL)
         assert response.status_code == 200
-        assert "Rich Land" in response.text
+        assert "Alberto" in response.text
 
     def test_login_page_is_up(self):
         """Verify the login page returns a 200 OK status code."""
@@ -75,7 +75,7 @@ class TestBrowserIntegration:
         driver.get(f"{WEB_URL}/accounts/login/")
         
         # Check title
-        assert "Login" in driver.title or "Rich Land" in driver.title
+        assert "Login" in driver.title or "Alberto" in driver.title
         
         # Verify login form elements exist
         username_input = driver.find_element(By.NAME, "username")
@@ -92,4 +92,4 @@ class TestBrowserIntegration:
         
         # Verify some text on the homepage
         body_text = driver.find_element(By.TAG_NAME, "body").text
-        assert "Rich Land" in body_text
+        assert "Alberto" in body_text

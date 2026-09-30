@@ -1,5 +1,5 @@
 """
-Django Settings for Rich Land Integrated Operations System (IOS).
+Django Settings for Alberto Grocers Inventory POS.
 
 This file contains all configuration for the Django project, including
 database connections, installed applications, security headers, and 

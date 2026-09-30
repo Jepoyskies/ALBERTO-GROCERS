@@ -1,5 +1,5 @@
 """
-Main URL Configuration for Rich Land IOS.
+Main URL Configuration for Alberto Grocers Inventory POS.
 
 This module acts as the central router for the entire application, 
 delegating URLs to specific apps (like inventory), handling authentication, 

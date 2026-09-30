@@ -37,10 +37,10 @@ See the [Deployment and Testing Document](Group#_DeployStage.pdf) for detailed t
 
 ## Environment Configuration
 
-The application uses `python-decouple` to manage configurations. You must create a `.env` file in the `richland_inventory/` directory.
+The application uses `python-decouple` to manage configurations. You must create a `.env` file in the `alberto_system/` directory.
 
 ### `.env` Setup
-Create `richland_inventory/.env` and add the following:
+Create `alberto_system/.env` and add the following:
 
 ```ini
 # Security
@@ -48,7 +48,7 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 
 # Database Configuration (Local/Docker)
-DB_NAME=richland_inventory_db
+DB_NAME=alberto_inventory_db
 DB_USER=user
 DB_PASSWORD=password
 DB_HOST=db
@@ -76,14 +76,14 @@ docker-compose up --build
 Run these once the containers are healthy:
 ```bash
 # Apply database migrations
-docker-compose exec web python richland_inventory/manage.py makemigrations
-docker-compose exec web python richland_inventory/manage.py migrate
+docker-compose exec web python alberto_system/manage.py makemigrations
+docker-compose exec web python alberto_system/manage.py migrate
 
 # Create an admin account
-docker-compose exec web python richland_inventory/manage.py createsuperuser
+docker-compose exec web python alberto_system/manage.py createsuperuser
 
 # (Optional) Seed the database with sample data
-docker-compose exec web python richland_inventory/manage.py seed_data
+docker-compose exec web python alberto_system/manage.py seed_data
 ```
 
 ### 3. Access the System
@@ -163,11 +163,11 @@ python manage.py createsuperuser
     ```
 3.  **Install Dependencies**
     ```bash
-    pip install -r richland_inventory/requirements.txt
+    pip install -r alberto_system/requirements.txt
     ```
 4.  **Database & Static Files**
     ```bash
-    cd richland_inventory
+    cd alberto_system
     python manage.py migrate
     python manage.py collectstatic --no-input
     ```
@@ -181,6 +181,6 @@ python manage.py createsuperuser
 ## Static Files Troubleshooting (Windows/Docker)
 If the Admin CSS/JS fails to load on Windows while using Docker:
 1.  Run `docker-compose down -v` to clear volumes.
-2.  Manually delete the `richland_inventory/staticfiles` folder on your host machine.
+2.  Manually delete the `alberto_system/staticfiles` folder on your host machine.
 3.  Ensure `DEBUG=True` is set in your `.env`.
 4.  Rebuild: `docker-compose up --build`.
