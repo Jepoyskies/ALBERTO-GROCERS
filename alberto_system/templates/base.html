@@ -4,18 +4,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Rich Land Integrated Operations System - Inventory and POS Dashboard">
-    <meta name="author" content="Rich Land Auto Supply">
-    <meta name="theme-color" content="#2c3e50">
-    <title>{% block title %}Rich Land Inventory{% endblock %}</title>
+    <meta name="description" content="Alberto Grocers - Inventory and POS Dashboard">
+    <meta name="author" content="Alberto Grocers">
+    <meta name="theme-color" content="#2d8653">
+    <title>{% block title %}Alberto Inventory POS{% endblock %}</title>
     
     <!-- Open Graph / Social Media Meta Tags -->
-    <meta property="og:title" content="Rich Land IOS Dashboard">
-    <meta property="og:description" content="Integrated operations, inventory tracking, and POS management.">
+    <meta property="og:title" content="Alberto Inventory POS Dashboard">
+    <meta property="og:description" content="Alberto Grocers - Grocery operations, inventory tracking, and POS management.">
     <meta property="og:type" content="website">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
 
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -211,8 +211,8 @@
     <header class="sticky-top">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="Main Navigation">
             <div class="container-fluid px-4">
-                <a class="navbar-brand me-4" href="{% url 'home' %}" aria-label="Navigate to Home Dashboard">
-                    <img src="{% static 'images/logo.png' %}" alt="Rich Land Auto Supply Logo" height="40">
+                <a class="navbar-brand me-4 d-flex align-items-center" href="{% url 'home' %}" aria-label="Navigate to Home Dashboard">
+                    <img src="{% static 'images/logo.png' %}" alt="Alberto Grocers Logo" height="40" class="me-2">
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle primary navigation menu">
                     <span class="navbar-toggler-icon"></span>
@@ -339,7 +339,7 @@
 
     <footer class="footer mt-auto py-3 bg-light border-top" role="contentinfo">
         <div class="container-fluid px-4 text-center">
-            <span class="text-muted small">© {% now "Y" %} Rich Land Auto Supply. All rights reserved.</span>
+            <span class="text-muted small">© {% now "Y" %} Alberto Grocers. All rights reserved.</span>
         </div>
     </footer>
 

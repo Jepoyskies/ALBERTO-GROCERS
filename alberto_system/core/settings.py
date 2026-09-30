@@ -200,8 +200,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Rich Land Inventory API',
-    'DESCRIPTION': 'A comprehensive API for managing products, stock, and transactions.',
+    'TITLE': 'Alberto Grocers Inventory API',
+    'DESCRIPTION': 'A comprehensive API for Alberto Grocers managing products, stock, and transactions.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SORT_TAGS_BY_NAME': True,

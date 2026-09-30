@@ -1,6 +1,6 @@
-# Richland IOS
+# Alberto Inventory POS - Alberto Grocers
 
-A comprehensive integrations operations system built with Django and MySQL, designed for robust tracking, audit logging, and POS functionality.
+A comprehensive inventory and Point of Sale (POS) operations system customized for Alberto Grocers, designed for tracking, audit logging, and fast grocery sales.
 
 ## Deployment Environments
 

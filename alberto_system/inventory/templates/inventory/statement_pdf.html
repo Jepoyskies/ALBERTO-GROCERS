@@ -4,7 +4,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SOW History - {{ customer.name }}</title>
+    <title>Customer Statement - {{ customer.name }}</title>
     <style>
         @page {
             size: a4 portrait;
@@ -40,7 +40,7 @@
         table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         table.data-table thead { display: table-header-group; }
         table.data-table th { background-color: #2c3e50; color: #ffffff; padding: 5px; font-weight: bold; border: 1px solid #2c3e50; text-transform: uppercase; font-size: 8px; }
-        table.data-table td { border: 1px solid #bdc3c7; padding: 4px; vertical-align: top; font-size: 8px; }
+        table.data-table td { border: 1px solid #bdc3c7; padding: 4px; vertical-align: middle; font-size: 8px; }
         
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -56,10 +56,10 @@
             <tr>
                 <td style="vertical-align: bottom; width: 50%;">
                     <img src="images/logo.png" style="height: 50px; width: auto;" alt="" />
-                    <br/><span class="company-name">Rich Land Auto Supply</span>
+                    <br/><span class="company-name">Alberto Grocers</span>
                 </td>
                 <td style="vertical-align: bottom; text-align: right; width: 50%;">
-                    <div class="report-title">HYDRAULIC SOW HISTORY</div>
+                    <div class="report-title">CUSTOMER STATEMENT</div>
                     <div class="report-meta">
                         Customer: <strong>{{ customer.name }}</strong><br/>
                         Generated: {% now "F d, Y h:i A" %}
@@ -74,39 +74,57 @@
     </div>
 
     <!-- CONTENT -->
+    <table class="summary-table">
+        <col width="15%">
+        <col width="35%">
+        <col width="20%">
+        <col width="30%">
+        <tr>
+            <td class="bold">Customer Name:</td>
+            <td>{{ customer.name }}</td>
+            <td class="bold text-right">Statement Date:</td>
+            <td class="text-right">{{ today|date:"F d, Y" }}</td>
+        </tr>
+        <tr>
+            <td class="bold">Address:</td>
+            <td>{{ customer.address|default:"N/A" }}</td>
+            <td class="bold text-right">Total Balance Due:</td>
+            <td class="text-right bold" style="font-size: 12px;">PHP {{ current_balance|floatformat:2|intcomma }}</td>
+        </tr>
+    </table>
+
     <table class="data-table">
+        <col width="10%">
+        <col width="10%">
+        <col width="35%">
+        <col width="10%">
+        <col width="10%">
+        <col width="10%">
+        <col width="15%">
         <thead>
             <tr>
-                <th style="width: 10%;">Job ID</th>
-                <th style="width: 12%;">Date</th>
-                <th style="width: 15%;">Application</th>
-                <th style="width: 23%;">Hose Details</th>
-                <th style="width: 20%;">Fittings</th>
-                <th style="width: 10%;" class="text-right">Cost</th>
-                <th style="width: 10%;">Notes</th>
-                <th style="width: 10%;">Created By</th>
+                <th>Date</th>
+                <th>Reference</th>
+                <th>Description</th>
+                <th class="text-right">Debit</th>
+                <th class="text-right">Credit</th>
+                <th class="text-right">Balance</th>
+                <th>Processed By</th>
             </tr>
         </thead>
         <tbody>
-            {% for sow in sows %}
+            {% for entry in ledger %}
             <tr>
-                <td><strong>{{ sow.sow_id|default:sow.id }}</strong></td>
-                <td>
-                    {{ sow.date_created|date:"Y-m-d" }}<br>
-                    <span style="color: #7f8c8d;">{{ sow.date_created|date:"h:i A" }}</span>
-                </td>
-                <td>{{ sow.application|default:"-" }}</td>
-                <td>
-                    <strong>{{ sow.hose_type|default:"-" }}</strong><br>
-                    &Oslash; {{ sow.diameter|default:"?" }}" &bull; L: {{ sow.length|default:"?" }}mm &bull; P: {{ sow.pressure|default:"?" }} PSI
-                </td>
-                <td>A: {{ sow.fitting_a|default:"-" }}<br>B: {{ sow.fitting_b|default:"-" }}</td>
-                <td class="text-right bold">{% if sow.cost %}PHP {{ sow.cost|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
-                <td>{{ sow.notes|default:"-" }}</td>
-                <td>{{ sow.created_by.username|default:"N/A" }}</td>
+                <td>{{ entry.date|date:"Y-m-d" }}</td>
+                <td>{{ entry.ref|default:"-" }}</td>
+                <td>{{ entry.description }}</td>
+                <td class="text-right">{% if entry.debit > 0 %}{{ entry.debit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                <td class="text-right">{% if entry.credit > 0 %}{{ entry.credit|floatformat:2|intcomma }}{% else %}-{% endif %}</td>
+                <td class="text-right bold">{{ entry.balance|floatformat:2|intcomma }}</td>
+                <td>{{ entry.user }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="text-center">No Hydraulic SOW records found for this customer.</td></tr>
+            <tr><td colspan="7" class="text-center">No transactions recorded for this period.</td></tr>
             {% endfor %}
         </tbody>
     </table>

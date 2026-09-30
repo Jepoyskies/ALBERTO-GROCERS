@@ -6,7 +6,7 @@ __pycache__/
 
 # Environment Variables
 .env
-richland_inventory/.env
+alberto_system/.env
 
 # Virtual Environment
 venv/
@@ -19,6 +19,13 @@ richland_inventory/staticfiles/
 richland_inventory/media/
 richland_inventory/db.sqlite3
 richland_inventory/db.sqlite3-journal
+alberto_system/staticfiles/
+alberto_system/media/
+alberto_system/db.sqlite3
+alberto_system/db.sqlite3-journal
+*.sqlite3
+*.sqlite3-journal
+*.local.txt
 
 # Logs
 *.log

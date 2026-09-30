@@ -30,9 +30,9 @@ class CancellationReasonAdmin(admin.ModelAdmin):
     list_filter = ('timestamp', 'cancelled_by')
     readonly_fields = ('timestamp',)
 
-admin.site.site_header = "Rich Land Admin"
-admin.site.site_title = "Rich Land Admin Portal"
-admin.site.index_title = "Welcome to the Rich Land Inventory Portal"
+admin.site.site_header = "Alberto Grocers Admin"
+admin.site.site_title = "Alberto Grocers Admin Portal"
+admin.site.index_title = "Welcome to Alberto Grocers Inventory Portal"
 
 
 # --- Core Inventory ---
